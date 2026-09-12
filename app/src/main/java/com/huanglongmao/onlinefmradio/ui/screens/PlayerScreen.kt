@@ -338,39 +338,10 @@ fun PlayerScreen(onBack: () -> Unit) {
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp),
                     )
-                    Slider(
+                    com.huanglongmao.onlinefmradio.ui.components.SlimSlider(
                         value = volume,
                         onValueChange = { controller.setVolume(it) },
-                        modifier = Modifier.weight(1f).height(26.dp),
-                        thumb = {
-                            Box(
-                                Modifier
-                                    .size(12.dp)
-                                    .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary),
-                            )
-                        },
-                        track = { state ->
-                            val range = state.valueRange.endInclusive - state.valueRange.start
-                            val fraction =
-                                if (range > 0f) ((state.value - state.valueRange.start) / range)
-                                    .coerceIn(0f, 1f) else 0f
-                            Box(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)),
-                            ) {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth(fraction)
-                                        .height(4.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(MaterialTheme.colorScheme.primary),
-                                )
-                            }
-                        },
+                        modifier = Modifier.weight(1f),
                     )
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeUp,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -103,18 +104,18 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 }
             }
 
-            // 渐变主题网格
+            // 渐变主题网格（两排、每排 4 个）
             Text("渐变主题", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                GradientThemes.presets.chunked(2).forEachIndexed { rowIdx, row ->
+                GradientThemes.presets.chunked(4).forEachIndexed { rowIdx, row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEachIndexed { colIdx, theme ->
-                            val index = rowIdx * 2 + colIdx
+                            val index = rowIdx * 4 + colIdx
                             val selected = wallpaperIndex == index
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(64.dp)
+                                    .aspectRatio(0.9f)
                                     .background(
                                         Brush.linearGradient(theme.gradient),
                                         RoundedCornerShape(14.dp),
@@ -122,23 +123,26 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                                     .clickable {
                                         scope.launch { container.themeStore.setWallpaperIndex(index) }
                                     }
-                                    .padding(10.dp),
+                                    .padding(8.dp),
                             ) {
                                 Text(
                                     text = theme.name,
                                     color = Color.White,
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.labelMedium,
                                 )
                                 if (selected) {
                                     Text(
                                         text = "✓",
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelMedium,
                                         modifier = Modifier.align(Alignment.BottomEnd),
                                     )
                                 }
                             }
                         }
+                        // 不足 4 个时补齐占位，保持宽度一致
+                        repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
@@ -176,10 +180,9 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 Text("  播放音量", modifier = Modifier.weight(1f))
                 Text("${(volume * 100).toInt()}%")
             }
-            Slider(
+            com.huanglongmao.onlinefmradio.ui.components.SlimSlider(
                 value = volume,
                 onValueChange = { container.playerController.setVolume(it) },
-                valueRange = 0f..1f,
             )
 
             // 电池优化引导
