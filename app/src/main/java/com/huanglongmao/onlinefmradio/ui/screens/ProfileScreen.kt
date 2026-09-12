@@ -1,0 +1,208 @@
+package com.huanglongmao.onlinefmradio.ui.screens
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.huanglongmao.onlinefmradio.core.constants.AppConstants
+import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
+import com.huanglongmao.onlinefmradio.data.model.ReleaseNote
+import com.huanglongmao.onlinefmradio.ui.Routes
+import kotlinx.coroutines.launch
+
+/**
+ * 我的页（对应 Flutter 版 profile_page.dart）：
+ * 功能入口菜单 + 应用更新检查。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreen(onOpenDrawer: () -> Unit, onNavigate: (String) -> Unit) {
+    val container = LocalAppContainer.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showAbout by remember { mutableStateOf(false) }
+
+    // 静默检查更新（24h 间隔）
+    var newRelease by remember { mutableStateOf<ReleaseNote?>(null) }
+    LaunchedEffect(Unit) {
+        val releases = runCatching { container.appUpdateManager.checkForUpdates(force = false) }
+            .getOrElse { emptyList() }
+        val latest = container.appUpdateManager.latestStable(releases)
+        if (latest != null && container.appUpdateManager.isNewer(latest) &&
+            !container.appUpdateManager.isSkipped(latest.normalizedVersion)
+        ) {
+            newRelease = latest
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("我的") },
+                navigationIcon = {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Filled.Menu, contentDescription = "菜单")
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            // 用户信息头部
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Text(
+                    text = AppConstants.APP_NAME,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "版本 ${AppConstants.APP_VERSION}（${AppConstants.APP_BUILD_NUMBER}）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            HorizontalDivider()
+
+            val items = listOf(
+                ProfileMenuItem("设置", Icons.Filled.Settings) { onNavigate(Routes.SETTINGS) },
+                ProfileMenuItem("搜索电台", Icons.Filled.Explore) { onNavigate(Routes.SEARCH) },
+                ProfileMenuItem("电台数据更新", Icons.Filled.CloudDownload) { onNavigate(Routes.STATION_UPDATE) },
+                ProfileMenuItem("缓存电台", Icons.Filled.Save) { onNavigate(Routes.CACHED_STATIONS) },
+                ProfileMenuItem("本地电台", Icons.Filled.Description) { onNavigate(Routes.LOCAL_STATIONS) },
+                ProfileMenuItem("随机电台", Icons.Filled.Shuffle) { onNavigate(Routes.RANDOM_STATION) },
+                ProfileMenuItem("更新日志", Icons.Filled.Description) { onNavigate(Routes.CHANGELOG) },
+                ProfileMenuItem("帮助", Icons.Filled.Help) { onNavigate(Routes.HELP) },
+                ProfileMenuItem("检查更新", Icons.Filled.SystemUpdate) {
+                    scope.launch {
+                        val releases = runCatching {
+                            container.appUpdateManager.checkForUpdates(force = true)
+                        }.getOrElse { emptyList() }
+                        val latest = container.appUpdateManager.latestStable(releases)
+                        newRelease = if (latest != null && container.appUpdateManager.isNewer(latest)) {
+                            latest
+                        } else {
+                            // 无更新：弹关于
+                            showAbout = true
+                            null
+                        }
+                    }
+                },
+            )
+            items.forEach { item ->
+                ListItem(
+                    headlineContent = { Text(item.label) },
+                    leadingContent = {
+                        Icon(item.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    modifier = Modifier.clickable(onClick = item.action),
+                )
+            }
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("关于") },
+                leadingContent = {
+                    Icon(Icons.Filled.Help, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                },
+                modifier = Modifier.clickable { showAbout = true },
+            )
+        }
+    }
+
+    if (showAbout) {
+        AlertDialog(
+            onDismissRequest = { showAbout = false },
+            title = { Text(AppConstants.APP_NAME) },
+            text = {
+                Text(
+                    "全球 5 万+ 在线电台聚合播放器\n" +
+                        "数据来源：radio-browser.info\n" +
+                        "版本：${AppConstants.APP_VERSION}\n" +
+                        "作者：Huanglongmao",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showAbout = false }) { Text("知道了") }
+            },
+        )
+    }
+
+    // 应用更新对话框
+    newRelease?.let { release ->
+        AlertDialog(
+            onDismissRequest = { newRelease = null },
+            title = { Text("发现新版本 ${release.normalizedVersion}") },
+            text = { Text(release.body.take(400).ifEmpty { "修复若干问题，优化使用体验。" }) },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = {
+                        scope.launch { container.appUpdateManager.skipVersion(release.normalizedVersion) }
+                        newRelease = null
+                    }) { Text("跳过此版本") }
+                    TextButton(onClick = {
+                        val url = release.apkDownloadUrl ?: release.htmlUrl
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                        newRelease = null
+                    }) { Text("去下载") }
+                }
+            },
+            dismissButton = {},
+        )
+    }
+}
+
+private data class ProfileMenuItem(
+    val label: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val action: () -> Unit,
+)

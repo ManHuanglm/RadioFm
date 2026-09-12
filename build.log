@@ -1,0 +1,125 @@
+﻿Starting a Gradle Daemon, 1 incompatible Daemon could not be reused, use --status for details
+This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Checking the license for package Android SDK Build-Tools 35 in E:\Program Files\Android\licenses
+License for package Android SDK Build-Tools 35 accepted.
+Preparing "Install Android SDK Build-Tools 35 v.35.0.0".
+"Install Android SDK Build-Tools 35 v.35.0.0" ready.
+Installing Android SDK Build-Tools 35 in E:\Program Files\Android\build-tools\35.0.0
+"Install Android SDK Build-Tools 35 v.35.0.0" complete.
+"Install Android SDK Build-Tools 35 v.35.0.0" finished.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:checkDebugAarMetadata
+> Task :app:generateDebugResValues
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:processDebugManifestForPackage
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
+> Task :app:processDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:compileDebugKotlin
+> Task :app:mergeExtDexDebug
+
+> Task :app:compileDebugKotlin FAILED
+gradle.bat : e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio
+/core/network/RetrofitFactory.kt:54:21 Public-API inline function cannot access non-public-API property.
+At line:15 char:1909
++ ... $env:Path"; & "C:\Users\Administrator\.gradle\wrapper\dists\gradle-8. ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (e: file:///F:/A...c-API property.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/player/Media
+ItemMapper.kt:65:63 Unresolved reference 'AUDIO_MIME_TYPE_AAC'.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/AppRoot.k
+t:111:29 Suspend function 'suspend fun close(): Unit' can only be called from a coroutine or another suspend function.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/AppRoot.k
+t:133:61 Suspend function 'suspend fun open(): Unit' can only be called from a coroutine or another suspend function.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/AppRoot.k
+t:136:64 Suspend function 'suspend fun open(): Unit' can only be called from a coroutine or another suspend function.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/AppRoot.k
+t:139:66 Suspend function 'suspend fun open(): Unit' can only be called from a coroutine or another suspend function.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/AppRoot.k
+t:142:64 Suspend function 'suspend fun open(): Unit' can only be called from a coroutine or another suspend function.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/component
+s/StationListBody.kt:55:31 Argument type mismatch: actual type is 'Function1<Station, Unit>', but 'Function0<Unit>' was
+ expected.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/component
+s/StationListBody.kt:56:35 Argument type mismatch: actual type is 'Function1<Station, Unit>', but 'Function0<Unit>' was
+ expected.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/component
+s/StationPlayback.kt:31:50 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/component
+s/StationPlayback.kt:37:24 Type 'State<Station?>' has no method 'getValue(Nothing?, KProperty0<*>)', so it cannot serve
+ as a delegate.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/component
+s/StationPlayback.kt:38:19 Type 'State<Boolean>' has no method 'getValue(Nothing?, KProperty0<*>)', so it cannot serve 
+as a delegate.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/component
+s/StationPlayback.kt:46:13 Type 'State<Set<String>>' has no method 'getValue(Nothing?, KProperty0<*>)', so it cannot se
+rve as a delegate.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/C
+acheLocalRandomScreens.kt:210:32 Unresolved reference 'collectAsStateWithLifecycle'.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/F
+avoritesScreen.kt:42:24 Unresolved reference 'Modifier'.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/H
+omeScreen.kt:143:29 Argument type mismatch: actual type is 'List<Country>', but 'List<NameCountDto>' was expected.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/H
+omeScreen.kt:153:29 Argument type mismatch: actual type is 'List<Language>', but 'List<NameCountDto>' was expected.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/H
+omeScreen.kt:207:80 Smart cast to 'String' is impossible, because 'selected' is a delegated property.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:136:25 Unresolved reference 'Row'.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:137:29 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:139:55 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:143:33 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:145:59 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:146:59 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:150:33 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:152:59 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/M
+iscScreens.kt:153:59 @Composable invocations can only happen from the context of a @Composable function
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/S
+tationUpdateScreen.kt:77:5 Unresolved reference 'LaunchedEffect'.
+e: file:///F:/AiCode/code/kotlin/radio/FM/OnlineFmRadioKt/app/src/main/java/com/huanglongmao/onlinefmradio/ui/screens/S
+tationUpdateScreen.kt:77:36 Suspend function 'suspend fun refreshStats(): Unit' can only be called from a coroutine or 
+another suspend function.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCo
+mpilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3m 16s
+21 actionable tasks: 21 executed
