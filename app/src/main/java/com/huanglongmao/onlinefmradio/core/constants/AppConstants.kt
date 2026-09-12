@@ -77,8 +77,8 @@ object AppConstants {
     /** 分页加载每页数量 */
     const val PAGE_SIZE = 30
 
-    /** 全量更新批次大小（radio-browser API 单请求上限 1000，取满以减少请求数） */
-    const val BATCH_SIZE = 1000
+    /** 全量更新批次大小（批次越小，低配机进度条推进越频繁） */
+    const val BATCH_SIZE = 500
 
     /** 批次间让渡主线程时间（毫秒） */
     const val BATCH_DELAY_MS = 100L

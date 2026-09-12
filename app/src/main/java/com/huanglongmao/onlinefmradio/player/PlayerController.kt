@@ -211,17 +211,21 @@ class PlayerController(
 
     fun skipToPrevious() = skipBy(-1)
 
-    /** 循环切台（对齐原版取模逻辑） */
+    /** 在最近播放列表中循环切台（上/下一个） */
     private fun skipBy(delta: Int) {
         scope.launch {
             runCatching {
-                val c = awaitController()
-                val count = c.mediaItemCount
-                if (count <= 0) return@runCatching
-                val next = (c.currentMediaItemIndex + delta).mod(count)
-                c.seekTo(next, 0)
-                c.prepare()
-                c.play()
+                val history = historyStore.history.value
+                if (history.isEmpty()) return@runCatching
+                val current = _currentStation.value
+                val idx = history.indexOfFirst { it.id == current?.id }
+                val next = if (idx == -1) {
+                    // 当前台不在历史中：下一个取最新一条，上一个取最早一条
+                    if (delta > 0) 0 else history.size - 1
+                } else {
+                    (idx + delta).mod(history.size)
+                }
+                play(history[next])
             }
         }
     }

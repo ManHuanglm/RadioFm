@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -32,6 +33,8 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -101,6 +104,9 @@ fun PlayerScreen(onBack: () -> Unit) {
     var showSleepDialog by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
     var showVolumeSheet by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showStationInfo by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val history by container.historyStore.history.collectAsStateWithLifecycle()
     val playHistory = playAction()
@@ -143,6 +149,49 @@ fun PlayerScreen(onBack: () -> Unit) {
                             contentDescription = "收起",
                             tint = Color.White,
                         )
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMoreMenu = true }) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "更多",
+                                tint = Color.White,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMoreMenu,
+                            onDismissRequest = { showMoreMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("分享电台") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    station?.let { s ->
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_SEND,
+                                        ).apply {
+                                            type = "text/plain"
+                                            putExtra(
+                                                android.content.Intent.EXTRA_TEXT,
+                                                "${s.name}\n${s.streamUrl}",
+                                            )
+                                        }
+                                        context.startActivity(
+                                            android.content.Intent.createChooser(intent, "分享电台"),
+                                        )
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("电台信息") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    if (station != null) showStationInfo = true
+                                },
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -215,7 +264,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                     )
                 }
 
-                // 功能按钮排：音量 / 定时 / 收藏 / 动效 / 停止
+                // 功能按钮排：音量 / 定时 / 收藏 / 动效
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -235,9 +284,6 @@ fun PlayerScreen(onBack: () -> Unit) {
                     }
                     CircleAction(icon = Icons.Filled.Equalizer, label = "动效") {
                         container.visualizerStore.setEnabled(!visualizerEnabled)
-                    }
-                    CircleAction(icon = Icons.Filled.Stop, label = "停止") {
-                        controller.stop()
                     }
                 }
                 timerRemaining?.let { remaining ->
@@ -355,6 +401,31 @@ fun PlayerScreen(onBack: () -> Unit) {
         }
     }
 
+    // 电台信息弹窗
+    if (showStationInfo) {
+        station?.let { s ->
+            AlertDialog(
+                onDismissRequest = { showStationInfo = false },
+                title = {
+                    Text(s.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        InfoRow("国家", "${s.flagEmoji} ${s.country}")
+                        if (s.language.isNotBlank()) InfoRow("语言", s.language)
+                        InfoRow("类型", s.category)
+                        if (s.bitrate > 0) InfoRow("比特率", "${s.bitrate} kbps")
+                        if (s.votes > 0) InfoRow("投票", "${s.votes}")
+                        InfoRow("地址", s.streamUrl)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showStationInfo = false }) { Text("关闭") }
+                },
+            )
+        }
+    }
+
     // 上滑弹出的最近播放列表
     if (showHistorySheet) {
         ModalBottomSheet(onDismissRequest = { showHistorySheet = false }) {
@@ -461,6 +532,24 @@ private fun SleepTimerDialog(
             }
         },
     )
+}
+
+/** 电台信息弹窗中的单行「标签：值」 */
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row {
+        Text(
+            text = "$label：",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 /** 圆形功能按钮 + 底部文字标签（对齐原版播放页功能排样式） */

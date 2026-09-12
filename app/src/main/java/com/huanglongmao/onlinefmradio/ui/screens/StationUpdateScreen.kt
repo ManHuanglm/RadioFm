@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -110,9 +112,15 @@ fun StationUpdateScreen(onBack: () -> Unit) {
 
             if (isUpdating) {
                 val progress = if (total > 0) fetched.toFloat() / total else 0f
+                // 平滑推进，批次拉取期间也有过渡动画
+                val animated by animateFloatAsState(
+                    targetValue = progress,
+                    animationSpec = tween(durationMillis = 400),
+                    label = "updateProgress",
+                )
                 Text("正在更新…（$fetched / $total）", fontWeight = FontWeight.SemiBold)
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { animated },
                     modifier = Modifier.fillMaxWidth().height(10.dp),
                 )
                 Text("更新期间请保持网络畅通，可随时暂停。", style = MaterialTheme.typography.bodySmall)

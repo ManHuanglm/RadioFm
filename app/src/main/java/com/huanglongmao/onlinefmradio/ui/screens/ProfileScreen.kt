@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
@@ -196,6 +197,7 @@ fun ProfileScreen(onOpenDrawer: () -> Unit, onNavigate: (String) -> Unit) {
                         }
                     }
                 },
+                ProfileMenuItem("关于", Icons.Filled.Info) { showAbout = true },
             )
             // 菜单卡片容器
             Column(
@@ -217,14 +219,6 @@ fun ProfileScreen(onOpenDrawer: () -> Unit, onNavigate: (String) -> Unit) {
                     )
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            ListItem(
-                headlineContent = { Text("关于") },
-                leadingContent = {
-                    Icon(Icons.Filled.Help, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                },
-                modifier = Modifier.clickable { showAbout = true },
-            )
         }
     }
 
