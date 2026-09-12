@@ -23,7 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -99,6 +100,7 @@ fun PlayerScreen(onBack: () -> Unit) {
 
     var showSleepDialog by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
+    var showVolumeSheet by remember { mutableStateOf(false) }
 
     val history by container.historyStore.history.collectAsStateWithLifecycle()
     val playHistory = playAction()
@@ -122,7 +124,18 @@ fun PlayerScreen(onBack: () -> Unit) {
                 },
         ) {
             TopAppBar(
-                title = { },
+                title = {
+                    Text(
+                        text = station?.name ?: "播放",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -141,37 +154,29 @@ fun PlayerScreen(onBack: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(top = 64.dp, bottom = padding.calculateBottomPadding() + 16.dp)
+                    .padding(top = 64.dp, bottom = padding.calculateBottomPadding() + 14.dp)
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.weight(0.9f))
+                Spacer(Modifier.weight(1f))
 
-                // 台标 + 电台信息（视觉中心偏上）
-                station?.let { StationLogo(station = it, size = 136.dp, cornerRadius = 26.dp) }
-                Spacer(Modifier.height(18.dp))
+                // 国家信息（台标上方）
                 Text(
-                    text = station?.name ?: "未在播放",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = station?.let { "${it.flagEmoji} ${it.country} · ${it.category}" }
-                        ?: "选择一个电台开始收听",
-                    color = Color.White.copy(alpha = 0.75f),
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = station?.let { "${it.flagEmoji} ${it.country}" } ?: "",
+                    color = Color.White.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                Spacer(Modifier.weight(1.1f))
+                Spacer(Modifier.height(20.dp))
 
-                // 可视化动效（占据中部弹性区）
+                // 大台标
+                station?.let { StationLogo(station = it, size = 232.dp, cornerRadius = 30.dp) }
+
+                Spacer(Modifier.weight(1.2f))
+
+                // 可视化动效（开启时显示）
                 if (visualizerEnabled) {
                     MusicVisualizer(
                         style = visualizerStyle,
@@ -180,11 +185,10 @@ fun PlayerScreen(onBack: () -> Unit) {
                         color = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(72.dp),
+                            .height(64.dp),
                     )
+                    Spacer(Modifier.height(20.dp))
                 }
-
-                Spacer(Modifier.weight(1.1f))
 
                 // 状态提示：缓冲 / 重连 / 错误
                 when {
@@ -211,26 +215,61 @@ fun PlayerScreen(onBack: () -> Unit) {
                     )
                 }
 
-                Spacer(Modifier.weight(0.9f))
+                // 功能按钮排：音量 / 定时 / 收藏 / 动效 / 停止
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    CircleAction(icon = Icons.AutoMirrored.Filled.VolumeUp, label = "音量") {
+                        showVolumeSheet = true
+                    }
+                    CircleAction(icon = Icons.Filled.Timer, label = "定时") {
+                        showSleepDialog = true
+                    }
+                    CircleAction(
+                        icon = if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        label = "收藏",
+                        iconTint = if (isFav) Color(0xFFF87171) else Color.White,
+                    ) {
+                        station?.let { s -> scope.launch { container.favoritesStore.toggle(s) } }
+                    }
+                    CircleAction(icon = Icons.Filled.Equalizer, label = "动效") {
+                        container.visualizerStore.setEnabled(!visualizerEnabled)
+                    }
+                    CircleAction(icon = Icons.Filled.Stop, label = "停止") {
+                        controller.stop()
+                    }
+                }
+                timerRemaining?.let { remaining ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "定时关闭：${remaining.inWholeMinutes}分${remaining.inWholeSeconds % 60}秒",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
 
-                // 主播放控制
+                Spacer(Modifier.weight(1.2f))
+
+                // 播放控制
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(36.dp),
                 ) {
                     IconButton(onClick = { controller.skipToPrevious() }) {
                         Icon(
                             Icons.Filled.SkipPrevious,
                             contentDescription = "上一台",
                             tint = Color.White,
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier.size(44.dp),
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(40.dp))
-                            .background(Color.White.copy(alpha = 0.18f)),
+                            .size(88.dp)
+                            .shadow(10.dp, RoundedCornerShape(44.dp))
+                            .clip(RoundedCornerShape(44.dp))
+                            .background(Color.White.copy(alpha = 0.22f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         IconButton(onClick = { controller.togglePlayPause() }) {
@@ -245,7 +284,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                                     },
                                     contentDescription = "播放/暂停",
                                     tint = Color.White,
-                                    modifier = Modifier.size(44.dp),
+                                    modifier = Modifier.size(48.dp),
                                 )
                             }
                         }
@@ -255,63 +294,60 @@ fun PlayerScreen(onBack: () -> Unit) {
                             Icons.Filled.SkipNext,
                             contentDescription = "下一台",
                             tint = Color.White,
-                            modifier = Modifier.size(40.dp),
+                            modifier = Modifier.size(44.dp),
                         )
                     }
                 }
 
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.weight(1f))
 
-                // 功能排：收藏 / 停止 / 睡眠定时
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(onClick = {
-                        station?.let { s -> scope.launch { container.favoritesStore.toggle(s) } }
-                    }) {
-                        Icon(
-                            imageVector = if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = "收藏",
-                            tint = if (isFav) Color(0xFFF87171) else Color.White,
-                        )
-                    }
-                    IconButton(onClick = { controller.stop() }) {
-                        Icon(Icons.Filled.Stop, contentDescription = "停止", tint = Color.White)
-                    }
-                    IconButton(onClick = { showSleepDialog = true }) {
-                        Icon(Icons.Filled.Timer, contentDescription = "睡眠定时", tint = Color.White)
-                    }
-                }
-                timerRemaining?.let { remaining ->
-                    Text(
-                        text = "定时关闭：${remaining.inWholeMinutes}分${remaining.inWholeSeconds % 60}秒",
-                        color = Color.White.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-
+                // 上滑手势提示（短横线 + 文字）
+                Box(
+                    Modifier
+                        .width(44.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.4f)),
+                )
                 Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "上滑查看最近播放",
+                    color = Color.White.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+    }
 
-                // 音量：两侧喇叭图标 + 细轨道 + 小圆点滑块
+    // 音量调节弹层
+    if (showVolumeSheet) {
+        ModalBottomSheet(onDismissRequest = { showVolumeSheet = false }) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("音量", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(18.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeDown,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.9f),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp),
                     )
                     Slider(
                         value = volume,
                         onValueChange = { controller.setVolume(it) },
                         modifier = Modifier.weight(1f).height(26.dp),
-                        thumb = { state ->
+                        thumb = {
                             Box(
                                 Modifier
-                                    .size(10.dp)
+                                    .size(12.dp)
                                     .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(Color.White),
+                                    .background(MaterialTheme.colorScheme.primary),
                             )
                         },
                         track = { state ->
@@ -322,52 +358,28 @@ fun PlayerScreen(onBack: () -> Unit) {
                             Box(
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(3.dp)
-                                    .clip(RoundedCornerShape(1.5.dp))
-                                    .background(Color.White.copy(alpha = 0.3f)),
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)),
                             ) {
                                 Box(
                                     Modifier
                                         .fillMaxWidth(fraction)
-                                        .height(3.dp)
-                                        .clip(RoundedCornerShape(1.5.dp))
-                                        .background(Color.White.copy(alpha = 0.85f)),
+                                        .height(4.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(MaterialTheme.colorScheme.primary),
                                 )
                             }
                         },
-                        colors = androidx.compose.material3.SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White.copy(alpha = 0.85f),
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f),
-                        ),
                     )
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.9f),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp),
                     )
                 }
-
-                Spacer(Modifier.height(6.dp))
-
-                // 上滑手势提示
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.KeyboardArrowUp,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.55f),
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        text = "上滑查看最近播放",
-                        color = Color.White.copy(alpha = 0.55f),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -478,4 +490,37 @@ private fun SleepTimerDialog(
             }
         },
     )
+}
+
+/** 圆形功能按钮 + 底部文字标签（对齐原版播放页功能排样式） */
+@Composable
+private fun CircleAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    iconTint: Color = Color.White,
+    onClick: () -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(Color.White.copy(alpha = 0.14f))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
 }
