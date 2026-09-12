@@ -25,6 +25,20 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // CI 无正式签名，用 debug 签名保证 release 包可直接安装
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    // 传 -PabiSplits 时按架构分包并附 universal 包（CI 发布用）
+    if (project.hasProperty("abiSplits")) {
+        splits {
+            abi {
+                isEnable = true
+                reset()
+                include("arm64-v8a", "armeabi-v7a", "x86_64")
+                isUniversalApk = true
+            }
         }
     }
 
