@@ -108,6 +108,20 @@ class StationUpdateManager(
         updateAllStations()
     }
 
+    /**
+     * 在管理器自身的应用级作用域启动刷新任务：
+     * 页面退出 / 应用切后台不会取消，更新持续进行，
+     * 进度通过状态流（isUpdating/fetchedCount 等）随时可观察。
+     */
+    fun startRefresh() {
+        scope.launch { refresh() }
+    }
+
+    /** 在应用级作用域启动"清空重新获取"任务 */
+    fun startRestart() {
+        scope.launch { restart() }
+    }
+
     /** 全量更新（带断点续传与暂停/停止支持） */
     suspend fun updateAllStations() {
         if (_isUpdating.value) return

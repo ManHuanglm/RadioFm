@@ -32,7 +32,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
-import kotlinx.coroutines.launch
 
 /**
  * 电台数据更新页（对应 Flutter 版 station_update_service 的 UI 使用方）：
@@ -52,7 +50,6 @@ import kotlinx.coroutines.launch
 fun StationUpdateScreen(onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val manager = container.stationUpdateManager
-    val scope = rememberCoroutineScope()
     val view = LocalView.current
 
     val isUpdating by manager.isUpdating.collectAsStateWithLifecycle()
@@ -136,7 +133,7 @@ fun StationUpdateScreen(onBack: () -> Unit) {
                 Button(
                     onClick = {
                         started = true
-                        scope.launch { manager.refresh() }
+                        manager.startRefresh()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -187,7 +184,7 @@ fun StationUpdateScreen(onBack: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     confirmRestart = false
-                    scope.launch { manager.restart() }
+                    manager.startRestart()
                 }) { Text("确定") }
             },
             dismissButton = {

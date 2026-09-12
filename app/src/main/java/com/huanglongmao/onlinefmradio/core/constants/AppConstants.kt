@@ -77,11 +77,11 @@ object AppConstants {
     /** 分页加载每页数量 */
     const val PAGE_SIZE = 30
 
-    /** 全量更新批次大小（API 最大支持 1000） */
-    const val BATCH_SIZE = 500
+    /** 全量更新批次大小（radio-browser API 单请求上限 1000，取满以减少请求数） */
+    const val BATCH_SIZE = 1000
 
     /** 批次间让渡主线程时间（毫秒） */
-    const val BATCH_DELAY_MS = 200L
+    const val BATCH_DELAY_MS = 100L
 
     /** 全量缓存默认最大电台数量 */
     const val DEFAULT_MAX_STATIONS = 10000
