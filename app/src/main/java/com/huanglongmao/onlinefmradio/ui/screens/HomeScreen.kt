@@ -39,6 +39,7 @@ import com.huanglongmao.onlinefmradio.data.model.Language
 import com.huanglongmao.onlinefmradio.data.model.NameCountDto
 import com.huanglongmao.onlinefmradio.data.model.Station
 import com.huanglongmao.onlinefmradio.ui.Routes
+import com.huanglongmao.onlinefmradio.ui.components.FilterPickerSheet
 import com.huanglongmao.onlinefmradio.ui.components.StationListBody
 import kotlinx.coroutines.launch
 
@@ -165,7 +166,7 @@ fun HomeScreen(onOpenDrawer: () -> Unit, onNavigate: (String) -> Unit) {
     }
 }
 
-/** 国家/语言 Tab：下拉选择维度 → 本地过滤电台列表 */
+/** 国家/语言 Tab：底部弹层选择维度（LazyColumn 懒加载，低配机流畅）→ 本地过滤电台列表 */
 @Composable
 private fun DimensionFilterTab(
     items: List<NameCountDto>,
@@ -176,35 +177,30 @@ private fun DimensionFilterTab(
     labelOf: (NameCountDto) -> String = { it.name },
     emptyText: String,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var pickerOpen by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(initialSelection) }
     var visibleCount by remember { mutableIntStateOf(AppConstants.PAGE_SIZE) }
 
     Column(Modifier.fillMaxSize()) {
         OutlinedButton(
-            onClick = { expanded = true },
+            onClick = { pickerOpen = true },
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         ) {
             Text(selected?.let { "已选：$selected" } ?: "选择筛选条件")
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("全部") }, onClick = {
-                selected = null
-                onSelectionChanged(null)
-                visibleCount = AppConstants.PAGE_SIZE
-                expanded = false
-            })
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(labelOf(item)) },
-                    onClick = {
-                        selected = item.name
-                        onSelectionChanged(item.name)
-                        visibleCount = AppConstants.PAGE_SIZE
-                        expanded = false
-                    },
-                )
-            }
+        if (pickerOpen) {
+            FilterPickerSheet(
+                title = "选择筛选条件",
+                items = items,
+                selected = selected,
+                labelOf = labelOf,
+                onSelected = { value ->
+                    selected = value
+                    onSelectionChanged(value)
+                    visibleCount = AppConstants.PAGE_SIZE
+                },
+                onDismiss = { pickerOpen = false },
+            )
         }
         val sel = selected
         val filtered = if (sel == null) all else all.filter { matchOf(it, sel) }

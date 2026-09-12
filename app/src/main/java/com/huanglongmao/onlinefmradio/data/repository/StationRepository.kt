@@ -241,44 +241,69 @@ class StationRepository(
         )
     }
 
-    // ===== 维度查询 =====
+    // ===== 维度查询（本地缓存优先，空结果时回退远程）=====
+
+    /**
+     * 维度统计与筛选的完整数据源：
+     * 优先全量本地缓存；缓存为空时触发一次加载（API/assets 兜底并写入缓存）。
+     */
+    private suspend fun allForDimension(): List<Station> {
+        val cached = cache.getAll()
+        if (cached.isNotEmpty()) return cached
+        return loadStations()
+    }
 
     /** 按 ISO 国家代码加载电台 */
-    suspend fun loadByCountry(countryCode: String): List<Station> = try {
-        api.byCountryCode(countryCode).toValidStations()
-    } catch (_: Exception) {
-        emptyList()
+    suspend fun loadByCountry(countryCode: String): List<Station> {
+        val code = countryCode.uppercase()
+        val local = allForDimension().filter { it.countryCode.uppercase() == code }
+        if (local.isNotEmpty()) return local
+        return try {
+            api.byCountryCode(countryCode).toValidStations()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /** 按国家名称精确加载（用于推荐页国家偏好） */
-    suspend fun loadByCountryName(countryName: String): List<Station> = try {
-        api.byCountryExact(countryName, hidebroken = "true").toValidStations()
-    } catch (_: Exception) {
-        emptyList()
+    suspend fun loadByCountryName(countryName: String): List<Station> {
+        val local = allForDimension().filter { it.country == countryName }
+        if (local.isNotEmpty()) return local
+        return try {
+            api.byCountryExact(countryName, hidebroken = "true").toValidStations()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
-    /** 最近活跃的电台（按 lastchecktime 排序） */
-    suspend fun loadNewestStations(limit: Int = 20): List<Station> = try {
-        api.stations(
-            limit = limit, order = "lastchecktime",
-            reverse = "true", hidebroken = "true",
-        ).toValidStations()
-    } catch (_: Exception) {
-        emptyList()
-    }
+    /** 最近电台：本地缓存本身就是 votes 降序，直接取前 N（离线可用） */
+    suspend fun loadNewestStations(limit: Int = 20): List<Station> =
+        allForDimension().take(limit)
 
     /** 按标签加载电台 */
-    suspend fun loadByTag(tag: String): List<Station> = try {
-        api.byTag(tag).toValidStations()
-    } catch (_: Exception) {
-        emptyList()
+    suspend fun loadByTag(tag: String): List<Station> {
+        val t = tag.lowercase()
+        val local = allForDimension().filter {
+            it.category.lowercase() == t || it.description.lowercase().contains(t)
+        }
+        if (local.isNotEmpty()) return local
+        return try {
+            api.byTag(tag).toValidStations()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /** 按语言加载电台 */
-    suspend fun loadByLanguage(language: String): List<Station> = try {
-        api.byLanguage(language).toValidStations()
-    } catch (_: Exception) {
-        emptyList()
+    suspend fun loadByLanguage(language: String): List<Station> {
+        val l = language.lowercase()
+        val local = allForDimension().filter { it.language.lowercase().contains(l) }
+        if (local.isNotEmpty()) return local
+        return try {
+            api.byLanguage(language).toValidStations()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /** 通过 API 按名称搜索 */
@@ -292,11 +317,11 @@ class StationRepository(
     suspend fun searchCachedStations(keyword: String): List<Station> =
         cache.search(keyword)
 
-    // ===== 维度列表（从本地缓存统计，与原版一致）=====
+    // ===== 维度列表（从本地缓存全量统计，与原版一致）=====
 
     /** 从缓存数据统计国家列表（按电台数降序） */
     suspend fun loadCountries(): List<Country> {
-        val stations = loadStations()
+        val stations = allForDimension()
         if (stations.isEmpty()) return emptyList()
         val counts = LinkedHashMap<String, Int>()
         val codes = HashMap<String, String>()
@@ -314,7 +339,7 @@ class StationRepository(
 
     /** 从缓存数据统计标签列表 */
     suspend fun loadTags(): List<Tag> {
-        val stations = loadStations()
+        val stations = allForDimension()
         if (stations.isEmpty()) return emptyList()
         val counts = LinkedHashMap<String, Int>()
         for (s in stations) {
@@ -328,7 +353,7 @@ class StationRepository(
 
     /** 从缓存数据统计语言列表 */
     suspend fun loadLanguages(): List<Language> {
-        val stations = loadStations()
+        val stations = allForDimension()
         if (stations.isEmpty()) return emptyList()
         val counts = LinkedHashMap<String, Int>()
         for (s in stations) {
