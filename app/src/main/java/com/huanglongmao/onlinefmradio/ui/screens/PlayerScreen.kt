@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -140,12 +141,15 @@ fun PlayerScreen(onBack: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(top = 64.dp, bottom = padding.calculateBottomPadding() + 24.dp),
+                    .padding(top = 64.dp, bottom = padding.calculateBottomPadding() + 16.dp)
+                    .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // 台标
-                station?.let { StationLogo(station = it, size = 160.dp, cornerRadius = 28.dp) }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.weight(0.9f))
+
+                // 台标 + 电台信息（视觉中心偏上）
+                station?.let { StationLogo(station = it, size = 136.dp, cornerRadius = 26.dp) }
+                Spacer(Modifier.height(18.dp))
                 Text(
                     text = station?.name ?: "未在播放",
                     color = Color.White,
@@ -154,8 +158,8 @@ fun PlayerScreen(onBack: () -> Unit) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp),
                 )
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = station?.let { "${it.flagEmoji} ${it.country} · ${it.category}" }
                         ?: "选择一个电台开始收听",
@@ -163,12 +167,12 @@ fun PlayerScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 32.dp),
                 )
 
-                // 可视化动效
+                Spacer(Modifier.weight(1.1f))
+
+                // 可视化动效（占据中部弹性区）
                 if (visualizerEnabled) {
-                    Spacer(Modifier.height(18.dp))
                     MusicVisualizer(
                         style = visualizerStyle,
                         isPlaying = isPlaying,
@@ -176,12 +180,11 @@ fun PlayerScreen(onBack: () -> Unit) {
                         color = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(72.dp)
-                            .padding(horizontal = 36.dp),
+                            .height(72.dp),
                     )
                 }
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.weight(1.1f))
 
                 // 状态提示：缓冲 / 重连 / 错误
                 when {
@@ -191,9 +194,8 @@ fun PlayerScreen(onBack: () -> Unit) {
                             color = Color(0xFFFFCDD2),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 32.dp),
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(4.dp))
                         TextButton(onClick = { controller.retry() }) {
                             Text("点击重试", color = Color.White)
                         }
@@ -209,12 +211,12 @@ fun PlayerScreen(onBack: () -> Unit) {
                     )
                 }
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.weight(0.9f))
 
-                // 播放控制区
+                // 主播放控制
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
                     IconButton(onClick = { controller.skipToPrevious() }) {
                         Icon(
@@ -226,9 +228,9 @@ fun PlayerScreen(onBack: () -> Unit) {
                     }
                     Box(
                         modifier = Modifier
-                            .size(84.dp)
-                            .clip(RoundedCornerShape(42.dp))
-                            .background(Color.White.copy(alpha = 0.15f)),
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(40.dp))
+                            .background(Color.White.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         IconButton(onClick = { controller.togglePlayPause() }) {
@@ -243,7 +245,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                                     },
                                     contentDescription = "播放/暂停",
                                     tint = Color.White,
-                                    modifier = Modifier.size(48.dp),
+                                    modifier = Modifier.size(44.dp),
                                 )
                             }
                         }
@@ -257,8 +259,11 @@ fun PlayerScreen(onBack: () -> Unit) {
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+
+                Spacer(Modifier.height(6.dp))
+
+                // 功能排：收藏 / 停止 / 睡眠定时
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     IconButton(onClick = {
                         station?.let { s -> scope.launch { container.favoritesStore.toggle(s) } }
                     }) {
@@ -283,24 +288,32 @@ fun PlayerScreen(onBack: () -> Unit) {
                     )
                 }
 
-                // 音量
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
+
+                // 音量：两侧喇叭图标 + 细轨道 + 小圆点滑块
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 36.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeDown,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(22.dp),
                     )
                     Slider(
                         value = volume,
                         onValueChange = { controller.setVolume(it) },
-                        modifier = Modifier.weight(1f),
-                        // 细轨道样式（默认 M3 轨道过粗）
+                        modifier = Modifier.weight(1f).height(26.dp),
+                        thumb = { state ->
+                            Box(
+                                Modifier
+                                    .size(10.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(Color.White),
+                            )
+                        },
                         track = { state ->
                             val range = state.valueRange.endInclusive - state.valueRange.start
                             val fraction =
@@ -331,7 +344,28 @@ fun PlayerScreen(onBack: () -> Unit) {
                     Icon(
                         Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // 上滑手势提示
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.55f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = "上滑查看最近播放",
+                        color = Color.White.copy(alpha = 0.55f),
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
