@@ -68,6 +68,8 @@ import com.huanglongmao.onlinefmradio.ui.screens.LanguageListScreen
 import com.huanglongmao.onlinefmradio.ui.screens.LanguageStationsScreen
 import com.huanglongmao.onlinefmradio.ui.screens.LocalStationsScreen
 import com.huanglongmao.onlinefmradio.ui.screens.PlayerScreen
+import com.huanglongmao.onlinefmradio.ui.screens.DeveloperScreen
+import com.huanglongmao.onlinefmradio.ui.screens.LogsScreen
 import com.huanglongmao.onlinefmradio.ui.screens.ProfileScreen
 import com.huanglongmao.onlinefmradio.ui.screens.RandomStationScreen
 import com.huanglongmao.onlinefmradio.ui.screens.RecordingScreen
@@ -189,6 +191,8 @@ fun MainScaffold() {
                 composable(Routes.ALARM) { AlarmScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.HELP) { HelpScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.DEVELOPER) { DeveloperScreen(onBack = { navController.popBackStack() }, onNavigateLogs = { navController.navigate(Routes.LOGS) { launchSingleTop = true } }) }
+                composable(Routes.LOGS) { LogsScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.SEARCH) { SearchScreen(onBack = { navController.popBackStack() }) }
             }
         }

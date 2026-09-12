@@ -20,6 +20,8 @@ object Routes {
     const val ALARM = "alarm"
     const val CHANGELOG = "changelog"
     const val HELP = "help"
+    const val DEVELOPER = "developer"
+    const val LOGS = "logs"
 
     /** 带参路由模板 */
     const val COUNTRY_STATIONS = "country_stations/{name}/{code}"

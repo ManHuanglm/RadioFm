@@ -217,6 +217,12 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
                 }
             }
 
+            // 开发者功能
+            Text("开发者功能", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Button(onClick = { onNavigate(com.huanglongmao.onlinefmradio.ui.Routes.DEVELOPER) }) {
+                Text("开发者选项（日志 / 数据导入导出）")
+            }
+
             Spacer(Modifier.height(20.dp))
         }
     }

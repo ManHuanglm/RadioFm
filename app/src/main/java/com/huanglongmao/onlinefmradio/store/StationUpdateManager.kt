@@ -1,6 +1,7 @@
 package com.huanglongmao.onlinefmradio.store
 
 import com.huanglongmao.onlinefmradio.core.constants.AppConstants
+import com.huanglongmao.onlinefmradio.core.util.AppLogger
 import com.huanglongmao.onlinefmradio.data.model.RadioStats
 import com.huanglongmao.onlinefmradio.data.repository.StationRepository
 import kotlinx.coroutines.CoroutineScope
@@ -150,6 +151,7 @@ class StationUpdateManager(
         }
 
         try {
+            AppLogger.i(TAG, "全量更新开始：offset=$effectiveOffset, 已获取=${_fetchedCount.value}")
             val count = repository.fetchAllAndCache(
                 resumeOffset = effectiveOffset,
                 resumeFetched = _fetchedCount.value,
@@ -164,8 +166,10 @@ class StationUpdateManager(
                 shouldStop = { cancelled },
             )
             if (cancelled) {
+                AppLogger.i(TAG, "全量更新已停止，保留断点 offset=$effectiveOffset")
                 _hasResumeData.value = true
             } else {
+                AppLogger.i(TAG, "全量更新完成：共 $count 条")
                 _fetchedCount.value = count
                 _updateComplete.value = true
                 _hasResumeData.value = false
@@ -173,6 +177,7 @@ class StationUpdateManager(
                 _cachedCount.value = repository.getCachedStationCount()
             }
         } catch (e: Exception) {
+            AppLogger.e(TAG, "全量更新失败：${e.message}")
             _errorMessage.value = e.message ?: "更新失败"
             _hasResumeData.value = true
         } finally {
@@ -265,5 +270,9 @@ class StationUpdateManager(
     fun stop() {
         cancelled = true
         _isPaused.value = false
+    }
+
+    private companion object {
+        const val TAG = "StationUpdate"
     }
 }

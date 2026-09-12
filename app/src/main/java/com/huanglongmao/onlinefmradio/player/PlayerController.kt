@@ -7,6 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.huanglongmao.onlinefmradio.core.constants.AppConstants
+import com.huanglongmao.onlinefmradio.core.util.AppLogger
 import com.huanglongmao.onlinefmradio.data.model.Station
 import com.huanglongmao.onlinefmradio.store.HistoryStore
 import com.huanglongmao.onlinefmradio.store.SettingsDataStore
@@ -64,6 +65,7 @@ class PlayerController(
         // 重连耗尽后的友好错误 → UI 提示与手动重试
         scope.launch {
             PlayerEventBus.errors.collect { message ->
+                AppLogger.e(TAG, "播放错误：$message")
                 _errorMessage.value = message
                 _isBuffering.value = false
                 _isPlaying.value = false
@@ -114,6 +116,7 @@ class PlayerController(
     /** 播放指定电台 */
     fun play(station: Station) {
         scope.launch {
+            AppLogger.i(TAG, "开始播放：${station.name}")
             _errorMessage.value = null
             _currentStation.value = station
             _isBuffering.value = true
@@ -183,6 +186,7 @@ class PlayerController(
 
     fun stop() {
         scope.launch {
+            AppLogger.i(TAG, "停止播放：${_currentStation.value?.name.orEmpty()}")
             runCatching {
                 val c = awaitController()
                 c.stop()
@@ -258,5 +262,9 @@ class PlayerController(
             message.contains("403") || message.contains("forbidden") -> "电台拒绝连接，可能受地域限制。"
             else -> "电台暂时无法连接，请稍后重试。"
         }
+    }
+
+    private companion object {
+        const val TAG = "Player"
     }
 }
