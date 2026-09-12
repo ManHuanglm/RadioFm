@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,10 +59,12 @@ fun StationLogo(station: Station, size: Dp = 48.dp, cornerRadius: Dp = 12.dp) {
                 },
             )
         } else {
-            Text(
-                text = station.name.trim().take(1).uppercase().ifEmpty { "·" },
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // 图片获取失败：显示收音机图标占位
+            Icon(
+                imageVector = Icons.Filled.Radio,
+                contentDescription = "电台",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(size / 2),
             )
         }
     }
