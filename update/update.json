@@ -1,0 +1,12 @@
+{
+  "releases": [
+    {
+      "version": "v1.0.0",
+      "publishedAt": "2026-09-12",
+      "body": "首个版本\n- 全新 Kotlin 原生实现（Jetpack Compose + Material 3）\n- Media3 后台播放、媒体通知、断线自动重连\n- 全量电台数据更新与 JSONL 本地缓存\n- 8 套渐变主题、可视化、睡眠定时",
+      "apkUrl": "https://github.com/ManHuanglm/RadioFm/releases/download/v1.0.0/app-release.apk",
+      "htmlUrl": "https://github.com/ManHuanglm/RadioFm/releases/tag/v1.0.0",
+      "prerelease": false
+    }
+  ]
+}

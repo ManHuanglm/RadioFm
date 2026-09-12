@@ -51,43 +51,43 @@ data class ReleaseNote(
     }
 }
 
-/** GitHub Releases API 的单条 release */
+/**
+ * 静态更新清单（update.json，方案 2：自维护版本清单托管于 GitHub Pages / OSS）。
+ *
+ * 结构示例：
+ * ```json
+ * {
+ *   "releases": [
+ *     { "version": "v1.0.1", "publishedAt": "2026-09-12", "body": "...",
+ *       "apkUrl": "https://.../app-release.apk", "prerelease": false }
+ *   ]
+ * }
+ * ```
+ */
 @Serializable
-data class GithubReleaseDto(
-    @SerialName("tag_name") val tagName: String? = null,
-    val name: String? = null,
-    val body: String? = null,
-    @SerialName("html_url") val htmlUrl: String? = null,
-    @SerialName("published_at") val publishedAt: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
-    val prerelease: Boolean = false,
-    val assets: List<GithubAssetDto> = emptyList(),
+data class UpdateManifestDto(
+    val releases: List<UpdateReleaseDto> = emptyList(),
 )
 
-/** GitHub release 的资产文件 */
+/** 清单中的单条版本记录 */
 @Serializable
-data class GithubAssetDto(
-    val name: String = "",
-    @SerialName("browser_download_url") val browserDownloadUrl: String? = null,
-    val url: String? = null,
-) {
-    val apkDownloadUrl: String?
-        get() = if (name.lowercase().endsWith(".apk")) {
-            browserDownloadUrl ?: url
-        } else null
-}
+data class UpdateReleaseDto(
+    val version: String = "",
+    val publishedAt: String = "",
+    val body: String = "",
+    val apkUrl: String? = null,
+    val htmlUrl: String = "",
+    val prerelease: Boolean = false,
+)
 
-/** GithubReleaseDto → ReleaseNote */
-fun GithubReleaseDto.toReleaseNote(isLatest: Boolean = false): ReleaseNote {
-    val tag = tagName.orEmpty()
-    return ReleaseNote(
-        version = tag,
-        normalizedVersion = ReleaseNote.normalizeVersion(tag),
-        publishedAt = publishedAt ?: createdAt.orEmpty(),
-        body = body.orEmpty(),
-        htmlUrl = htmlUrl.orEmpty(),
-        prerelease = prerelease,
-        isLatest = isLatest,
-        apkDownloadUrl = assets.firstNotNullOfOrNull { it.apkDownloadUrl },
-    )
-}
+/** UpdateReleaseDto → ReleaseNote */
+fun UpdateReleaseDto.toReleaseNote(isLatest: Boolean = false): ReleaseNote = ReleaseNote(
+    version = version,
+    normalizedVersion = ReleaseNote.normalizeVersion(version),
+    publishedAt = publishedAt,
+    body = body,
+    htmlUrl = htmlUrl,
+    prerelease = prerelease,
+    isLatest = isLatest,
+    apkDownloadUrl = apkUrl,
+)

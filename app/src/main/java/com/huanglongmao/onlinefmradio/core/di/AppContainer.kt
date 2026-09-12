@@ -4,7 +4,6 @@ import android.content.Context
 import com.huanglongmao.onlinefmradio.core.constants.AppConstants
 import com.huanglongmao.onlinefmradio.data.cache.AssetFallback
 import com.huanglongmao.onlinefmradio.data.cache.StationFileCache
-import com.huanglongmao.onlinefmradio.data.remote.GithubApi
 import com.huanglongmao.onlinefmradio.data.remote.RadioBrowserApi
 import com.huanglongmao.onlinefmradio.data.repository.StationRepository
 import com.huanglongmao.onlinefmradio.player.PlayerController
@@ -36,8 +35,8 @@ class AppContainer(context: Context) {
         com.huanglongmao.onlinefmradio.core.network.RetrofitFactory.create(AppConstants.RADIO_BROWSER_API_BASE)
     }
 
-    val githubApi: GithubApi by lazy {
-        com.huanglongmao.onlinefmradio.core.network.RetrofitFactory.create("https://api.github.com/")
+    val updateApi: com.huanglongmao.onlinefmradio.data.remote.UpdateApi by lazy {
+        com.huanglongmao.onlinefmradio.core.network.RetrofitFactory.create("https://raw.githubusercontent.com/")
     }
 
     val stationCache: StationFileCache by lazy { StationFileCache(appContext) }
@@ -83,6 +82,6 @@ class AppContainer(context: Context) {
     }
 
     val appUpdateManager: AppUpdateManager by lazy {
-        AppUpdateManager(githubApi, settings)
+        AppUpdateManager(updateApi, settings)
     }
 }

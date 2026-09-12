@@ -3,21 +3,21 @@ package com.huanglongmao.onlinefmradio.store
 import com.huanglongmao.onlinefmradio.core.constants.AppConstants
 import com.huanglongmao.onlinefmradio.data.model.ReleaseNote
 import com.huanglongmao.onlinefmradio.data.model.toReleaseNote
-import com.huanglongmao.onlinefmradio.data.remote.GithubApi
+import com.huanglongmao.onlinefmradio.data.remote.UpdateApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 /**
- * 应用版本更新管理器（对应 Flutter 版 app_update_service.dart）。
+ * 应用版本更新管理器（方案 2：静态 update.json 清单）。
  *
- * - GitHub Releases 拉取（24 小时最小检查间隔，强制刷新除外）
+ * - 从 UPDATE_MANIFEST_URL 拉取版本清单（24 小时最小检查间隔，强制刷新除外）
  * - 版本列表缓存到 DataStore（离线可用）
  * - 跳过指定版本
  */
 class AppUpdateManager(
-    private val api: GithubApi,
+    private val api: UpdateApi,
     private val settings: SettingsDataStore,
 ) {
 
@@ -39,8 +39,12 @@ class AppUpdateManager(
         if (!force && !shouldCheck()) return@withContext cached
 
         val remote = runCatching {
-            api.releases(AppConstants.GITHUB_RELEASES_API_URL)
-                .map { it.toReleaseNote() }
+            api.manifest(AppConstants.UPDATE_MANIFEST_URL)
+                .releases
+                .mapIndexed { index, dto ->
+                    // 列表按新到旧排列，首条正式版即最新版
+                    dto.toReleaseNote(isLatest = index == 0 && !dto.prerelease)
+                }
         }.getOrElse { return@withContext cached }
 
         if (remote.isEmpty()) return@withContext cached.ifEmpty { remote }

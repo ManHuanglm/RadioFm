@@ -7,14 +7,18 @@ object AppConstants {
     const val APP_BUILD_NUMBER = "1"
     const val PACKAGE_NAME = "com.huanglongmao.onlinefmradio"
 
-    // ===== 应用更新（GitHub Releases）=====
+    // ===== 应用更新（方案 2：静态 update.json 版本清单）=====
 
-    const val GITHUB_OWNER = "Huanglongmao66"
-    const val GITHUB_REPO = "FlutterRadio"
-    const val GITHUB_RELEASES_API_URL =
-        "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases?per_page=30"
-    const val GITHUB_RELEASES_PAGE_URL =
-        "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases"
+    const val GITHUB_OWNER = "ManHuanglm"
+    const val GITHUB_REPO = "RadioFm"
+
+    /**
+     * 更新清单 URL：默认走 GitHub raw 直链（与仓库 update/update.json 同步）。
+     * 如需国内加速，可切换为 GitHub Pages / 对象存储（OSS、COS）地址，
+     * 仅改此处即可，格式见仓库 update/update.json。
+     */
+    const val UPDATE_MANIFEST_URL =
+        "https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main/update/update.json"
 
     /** 版本检查最小间隔（24 小时，毫秒） */
     const val UPDATE_CHECK_MIN_INTERVAL_MS: Long = 24 * 60 * 60 * 1000L
