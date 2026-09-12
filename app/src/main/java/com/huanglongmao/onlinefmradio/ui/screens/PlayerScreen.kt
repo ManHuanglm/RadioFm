@@ -1,6 +1,8 @@
 package com.huanglongmao.onlinefmradio.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
@@ -30,7 +34,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
@@ -49,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +66,7 @@ import com.huanglongmao.onlinefmradio.core.theme.GradientThemes
 import com.huanglongmao.onlinefmradio.store.VisualizerStyle
 import com.huanglongmao.onlinefmradio.ui.components.MusicVisualizer
 import com.huanglongmao.onlinefmradio.ui.components.StationLogo
+import com.huanglongmao.onlinefmradio.ui.components.playAction
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
 
@@ -89,6 +97,10 @@ fun PlayerScreen(onBack: () -> Unit) {
     val timerRemaining by sleepTimer.remaining.collectAsStateWithLifecycle()
 
     var showSleepDialog by remember { mutableStateOf(false) }
+    var showHistorySheet by remember { mutableStateOf(false) }
+
+    val history by container.historyStore.history.collectAsStateWithLifecycle()
+    val playHistory = playAction()
 
     val theme = GradientThemes.resolve(themeIndex)
     val isFav = station != null && favIds.contains(station!!.id)
@@ -99,7 +111,14 @@ fun PlayerScreen(onBack: () -> Unit) {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(theme.backgroundBrush),
+                .background(theme.backgroundBrush)
+                // 上滑手势：弹出最近播放列表
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { change, dragAmount ->
+                        change.consume()
+                        if (dragAmount < -8) showHistorySheet = true
+                    }
+                },
         ) {
             TopAppBar(
                 title = { },
@@ -281,6 +300,28 @@ fun PlayerScreen(onBack: () -> Unit) {
                         value = volume,
                         onValueChange = { controller.setVolume(it) },
                         modifier = Modifier.weight(1f),
+                        // 细轨道样式（默认 M3 轨道过粗）
+                        track = { state ->
+                            val range = state.valueRange.endInclusive - state.valueRange.start
+                            val fraction =
+                                if (range > 0f) ((state.value - state.valueRange.start) / range)
+                                    .coerceIn(0f, 1f) else 0f
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(3.dp)
+                                    .clip(RoundedCornerShape(1.5.dp))
+                                    .background(Color.White.copy(alpha = 0.3f)),
+                            ) {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(fraction)
+                                        .height(3.dp)
+                                        .clip(RoundedCornerShape(1.5.dp))
+                                        .background(Color.White.copy(alpha = 0.85f)),
+                                )
+                            }
+                        },
                         colors = androidx.compose.material3.SliderDefaults.colors(
                             thumbColor = Color.White,
                             activeTrackColor = Color.White.copy(alpha = 0.85f),
@@ -293,6 +334,59 @@ fun PlayerScreen(onBack: () -> Unit) {
                         tint = Color.White,
                     )
                 }
+            }
+        }
+    }
+
+    // 上滑弹出的最近播放列表
+    if (showHistorySheet) {
+        ModalBottomSheet(onDismissRequest = { showHistorySheet = false }) {
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "最近播放",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (history.isNotEmpty()) {
+                        TextButton(onClick = { scope.launch { container.historyStore.clear() } }) {
+                            Text("清空")
+                        }
+                    }
+                }
+                if (history.isEmpty()) {
+                    Text(
+                        "暂无播放记录",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    )
+                } else {
+                    LazyColumn(Modifier.fillMaxWidth()) {
+                        items(history, key = { it.id }) { st ->
+                            ListItem(
+                                headlineContent = {
+                                    Text(st.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                },
+                                supportingContent = {
+                                    Text("${st.flagEmoji} ${st.country}")
+                                },
+                                leadingContent = {
+                                    StationLogo(station = st, size = 44.dp, cornerRadius = 10.dp)
+                                },
+                                modifier = Modifier.clickable {
+                                    playHistory(st)
+                                    showHistorySheet = false
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
