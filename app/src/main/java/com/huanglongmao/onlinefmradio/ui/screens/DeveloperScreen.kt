@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -306,7 +307,7 @@ private fun ExportFilterDialog(
                                     pickingField = null
                                 }
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = current == null, onClick = null)
                             Text("  全部")
@@ -326,7 +327,7 @@ private fun ExportFilterDialog(
                                     pickingField = null
                                 }
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             RadioButton(selected = current == option, onClick = null)
                             Text("  $option")

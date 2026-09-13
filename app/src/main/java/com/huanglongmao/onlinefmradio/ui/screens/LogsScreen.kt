@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanglongmao.onlinefmradio.core.util.AppLogger
 
+/** WARN 级别日志颜色（暗金色，Material 语义色板无对应项） */
+private val LogWarnColor = Color(0xFFB8860B)
+
 /**
  * 应用日志页（开发者功能）：
  * 展示内存环形日志（最近 500 条），支持复制全部与清空。
@@ -80,7 +83,7 @@ fun LogsScreen(onBack: () -> Unit) {
                     fontFamily = FontFamily.Monospace,
                     color = when (entry.level) {
                         AppLogger.Level.ERROR -> MaterialTheme.colorScheme.error
-                        AppLogger.Level.WARN -> Color(0xFFB8860B)
+                        AppLogger.Level.WARN -> LogWarnColor
                         else -> Color.Unspecified
                     },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),

@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
 import com.huanglongmao.onlinefmradio.core.util.TranslationUtils
+import com.huanglongmao.onlinefmradio.core.util.regionOfCountryCode
 import com.huanglongmao.onlinefmradio.data.model.Country
 import com.huanglongmao.onlinefmradio.data.model.Language
 import com.huanglongmao.onlinefmradio.data.model.NameCountDto
@@ -51,53 +52,7 @@ import com.huanglongmao.onlinefmradio.ui.components.FilterPickerSheet
  * 国家/语言页额外支持 地区 / 分类 / 标签 筛选（基于本地电台数据聚合）。
  */
 
-// ===== 地区（大洲）映射 =====
-
-/** ISO 3166-1 alpha-2 → 大洲（按区域分组，未覆盖的归入"其他"） */
-private val regionGroups: Map<String, List<String>> = linkedMapOf(
-    "亚洲" to listOf(
-        "CN", "JP", "KR", "KP", "MN", "HK", "MO", "TW",
-        "IN", "PK", "BD", "LK", "NP", "BT", "MV",
-        "ID", "MY", "SG", "TH", "VN", "PH", "MM", "KH", "LA", "BN",
-        "KZ", "UZ", "TM", "KG", "TJ", "AF", "MN",
-        "IR", "IQ", "IL", "PS", "JO", "LB", "SY", "SA", "AE", "YE", "OM", "QA", "BH", "KW", "TR", "GE", "AM", "AZ", "CY",
-    ),
-    "欧洲" to listOf(
-        "GB", "IE", "FR", "DE", "IT", "ES", "PT", "NL", "BE", "LU", "CH", "AT",
-        "SE", "NO", "DK", "FI", "IS",
-        "PL", "CZ", "SK", "HU", "RO", "BG", "GR", "HR", "SI", "RS", "BA", "MK", "ME", "AL", "XK",
-        "LT", "LV", "EE", "BY", "UA", "MD", "RU", "MT", "MC", "AD", "SM", "LI",
-    ),
-    "北美洲" to listOf(
-        "US", "CA", "MX", "GL",
-        "GT", "BZ", "SV", "HN", "NI", "CR", "PA",
-        "CU", "HT", "DO", "JM", "TT", "BS", "BB", "AI", "AG", "DM", "GD", "KN", "LC", "VC", "PR", "GP", "MQ", "CW", "AW", "SX", "BL", "MF", "KY", "VI", "TC", "MS", "BM",
-    ),
-    "南美洲" to listOf(
-        "BR", "AR", "CL", "PE", "CO", "VE", "EC", "UY", "PY", "BO", "GY", "SR", "GF", "FK",
-    ),
-    "非洲" to listOf(
-        "EG", "LY", "TN", "DZ", "MA", "EH",
-        "SD", "SS", "ET", "ER", "DJ", "SO", "KE", "UG", "TZ", "RW", "BI",
-        "CD", "CG", "CF", "CM", "NG", "BJ", "TG", "GH", "CI", "LR", "SL", "GN", "GM", "BF", "ML", "NE", "TD", "SN", "GW", "CV", "ST", "GQ", "GA",
-        "ZM", "ZW", "MW", "MZ", "AO", "NA", "BW", "SZ", "LS", "ZA",
-        "MG", "MU", "KM", "YT", "SC", "RE", "SH",
-    ),
-    "大洋洲" to listOf(
-        "AU", "NZ", "PG", "FJ", "SB", "VU", "NC", "PF", "WS", "TO", "TV",
-        "NR", "KI", "FM", "MH", "PW", "GU", "CK", "NU", "AS", "TK", "PN", "NF", "WF", "MP",
-    ),
-)
-
-/** 国家代码 → 地区 快速查询表 */
-internal val countryCodeToRegion: Map<String, String> by lazy {
-    val map = HashMap<String, String>()
-    regionGroups.forEach { (region, codes) -> codes.forEach { map[it] = region } }
-    map
-}
-
-internal fun regionOfCountryCode(code: String): String =
-    countryCodeToRegion[code.uppercase()] ?: "其他"
+// 地区（大洲）映射已下沉至 core/util/RegionUtils.kt，此处直接引用 regionOfCountryCode
 
 // ===== 维度元数据（用于地区/分类/标签筛选）=====
 

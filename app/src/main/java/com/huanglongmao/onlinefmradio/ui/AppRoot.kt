@@ -3,6 +3,7 @@ package com.huanglongmao.onlinefmradio.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,10 +43,16 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -54,7 +61,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.huanglongmao.onlinefmradio.App
+import com.huanglongmao.onlinefmradio.core.constants.AppConstants
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
+import com.huanglongmao.onlinefmradio.core.theme.OnlineFmRadioTheme
 import com.huanglongmao.onlinefmradio.store.ThemeMode
 import com.huanglongmao.onlinefmradio.ui.components.CollapsedMiniCover
 import com.huanglongmao.onlinefmradio.ui.components.MiniPlayerBar
@@ -87,25 +96,25 @@ import kotlinx.coroutines.launch
 /** 应用根组件：主题 + DI 注入 + 主脚手架 */
 @Composable
 fun AppRoot() {
-    val container = (androidx.compose.ui.platform.LocalContext.current.applicationContext as App).container
+    val container = (LocalContext.current.applicationContext as App).container
     val themeMode by container.themeStore.themeMode.collectAsStateWithLifecycle()
     val wallpaperIndex by container.themeStore.wallpaperIndex.collectAsStateWithLifecycle()
     val fontScale by container.themeStore.fontScale.collectAsStateWithLifecycle()
 
     // 应用内字体大小（标准/大/特大）：叠加系统字体缩放
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val scaledDensity = androidx.compose.ui.unit.Density(
+    val density = LocalDensity.current
+    val scaledDensity = Density(
         density = density.density,
         fontScale = density.fontScale * fontScale,
     )
 
     CompositionLocalProvider(LocalAppContainer provides container) {
-        com.huanglongmao.onlinefmradio.core.theme.OnlineFmRadioTheme(
+        OnlineFmRadioTheme(
             themeMode = themeMode,
             wallpaperIndex = wallpaperIndex,
         ) {
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.ui.platform.LocalDensity provides scaledDensity,
+            CompositionLocalProvider(
+                LocalDensity provides scaledDensity,
             ) {
                 MainScaffold()
             }
@@ -118,14 +127,12 @@ fun AppRoot() {
 fun MainScaffold() {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBottomBar = currentRoute in Routes.bottomTabs
     // 迷你播放条展开/收缩状态（收缩后封面圆悬浮于内容区左下角）
-    var miniExpanded by androidx.compose.runtime.saveable.rememberSaveable {
-        androidx.compose.runtime.mutableStateOf(true)
-    }
+    var miniExpanded by rememberSaveable { mutableStateOf(true) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -152,83 +159,20 @@ fun MainScaffold() {
                 }
             },
         ) { padding ->
-            androidx.compose.foundation.layout.Box(
+            Box(
                 Modifier
                     .padding(padding)
                     .fillMaxWidth(),
             ) {
-                NavHost(
+                AppNavHost(
                     navController = navController,
-                    startDestination = Routes.HOME,
-                ) {
-                    composable(Routes.HOME) {
-                        HomeScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
-                    }
-                    composable(Routes.EXPLORE) {
-                        ExploreScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
-                    }
-                    composable(Routes.FAVORITES) {
-                        FavoritesScreen(onOpenDrawer = { scope.launch { drawerState.open() } })
-                    }
-                    composable(Routes.PROFILE) {
-                        ProfileScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
-                    }
-                    composable(Routes.PLAYER) { PlayerScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.SETTINGS) {
-                        SettingsScreen(onBack = { navController.popBackStack() }, onNavigate = navController::navigate)
-                    }
-                    composable(Routes.STATION_UPDATE) { StationUpdateScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.CACHED_STATIONS) { CachedStationsScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.LOCAL_STATIONS) { LocalStationsScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.RANDOM_STATION) { RandomStationScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.COUNTRY_LIST) {
-                        CountryListScreen(onBack = { navController.popBackStack() }) { name, code ->
-                            navController.navigate(Routes.countryStations(name, code))
-                        }
-                    }
-                    composable(Routes.COUNTRY_STATIONS) { entry ->
-                        CountryStationsScreen(
-                            onBack = { navController.popBackStack() },
-                            name = entry.arguments?.getString("name").orEmpty(),
-                            code = entry.arguments?.getString("code").orEmpty(),
-                        )
-                    }
-                    composable(Routes.LANGUAGE_LIST) {
-                        LanguageListScreen(onBack = { navController.popBackStack() }) { name ->
-                            navController.navigate(Routes.languageStations(name))
-                        }
-                    }
-                    composable(Routes.LANGUAGE_STATIONS) { entry ->
-                        LanguageStationsScreen(
-                            onBack = { navController.popBackStack() },
-                            name = entry.arguments?.getString("name").orEmpty(),
-                        )
-                    }
-                    composable(Routes.TAG_LIST) {
-                        TagListScreen(onBack = { navController.popBackStack() }) { tag ->
-                            navController.navigate(Routes.tagStations(tag))
-                        }
-                    }
-                    composable(Routes.TAG_STATIONS) { entry ->
-                        TagStationsScreen(
-                            onBack = { navController.popBackStack() },
-                            tag = entry.arguments?.getString("tag").orEmpty(),
-                        )
-                    }
-                    composable(Routes.RECORDING) { RecordingScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.ALARM) { AlarmScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.HELP) { HelpScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.DEVELOPER) { DeveloperScreen(onBack = { navController.popBackStack() }, onNavigateLogs = { navController.navigate(Routes.LOGS) { launchSingleTop = true } }) }
-                    composable(Routes.LOGS) { LogsScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.HISTORY) { HistoryScreen(onBack = { navController.popBackStack() }) }
-                    composable(Routes.SEARCH) { SearchScreen(onBack = { navController.popBackStack() }) }
-                }
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                )
                 // 收缩态封面圆：悬浮于内容区左下角（绘制在导航内容之上）
                 if (showBottomBar && !miniExpanded) {
                     CollapsedMiniCover(
                         modifier = Modifier
-                            .align(androidx.compose.ui.Alignment.BottomStart)
+                            .align(Alignment.BottomStart)
                             .padding(start = 14.dp, bottom = 10.dp),
                         onExpand = { miniExpanded = true },
                         onOpenPlayer = { navController.navigate(Routes.PLAYER) { launchSingleTop = true } },
@@ -236,6 +180,83 @@ fun MainScaffold() {
                 }
             }
         }
+    }
+}
+
+/** 全部路由导航图 */
+@Composable
+private fun AppNavHost(navController: NavHostController, onOpenDrawer: () -> Unit) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.HOME,
+    ) {
+        composable(Routes.HOME) {
+            HomeScreen(onOpenDrawer = onOpenDrawer, onNavigate = navController::navigate)
+        }
+        composable(Routes.EXPLORE) {
+            ExploreScreen(onOpenDrawer = onOpenDrawer, onNavigate = navController::navigate)
+        }
+        composable(Routes.FAVORITES) {
+            FavoritesScreen(onOpenDrawer = onOpenDrawer)
+        }
+        composable(Routes.PROFILE) {
+            ProfileScreen(onOpenDrawer = onOpenDrawer, onNavigate = navController::navigate)
+        }
+        composable(Routes.PLAYER) { PlayerScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { navController.popBackStack() }, onNavigate = navController::navigate)
+        }
+        composable(Routes.STATION_UPDATE) { StationUpdateScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.CACHED_STATIONS) { CachedStationsScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.LOCAL_STATIONS) { LocalStationsScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.RANDOM_STATION) { RandomStationScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.COUNTRY_LIST) {
+            CountryListScreen(onBack = { navController.popBackStack() }) { name, code ->
+                navController.navigate(Routes.countryStations(name, code))
+            }
+        }
+        composable(Routes.COUNTRY_STATIONS) { entry ->
+            CountryStationsScreen(
+                onBack = { navController.popBackStack() },
+                name = entry.arguments?.getString("name").orEmpty(),
+                code = entry.arguments?.getString("code").orEmpty(),
+            )
+        }
+        composable(Routes.LANGUAGE_LIST) {
+            LanguageListScreen(onBack = { navController.popBackStack() }) { name ->
+                navController.navigate(Routes.languageStations(name))
+            }
+        }
+        composable(Routes.LANGUAGE_STATIONS) { entry ->
+            LanguageStationsScreen(
+                onBack = { navController.popBackStack() },
+                name = entry.arguments?.getString("name").orEmpty(),
+            )
+        }
+        composable(Routes.TAG_LIST) {
+            TagListScreen(onBack = { navController.popBackStack() }) { tag ->
+                navController.navigate(Routes.tagStations(tag))
+            }
+        }
+        composable(Routes.TAG_STATIONS) { entry ->
+            TagStationsScreen(
+                onBack = { navController.popBackStack() },
+                tag = entry.arguments?.getString("tag").orEmpty(),
+            )
+        }
+        composable(Routes.RECORDING) { RecordingScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.ALARM) { AlarmScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.HELP) { HelpScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.DEVELOPER) {
+            DeveloperScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateLogs = { navController.navigate(Routes.LOGS) { launchSingleTop = true } },
+            )
+        }
+        composable(Routes.LOGS) { LogsScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.HISTORY) { HistoryScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.SEARCH) { SearchScreen(onBack = { navController.popBackStack() }) }
     }
 }
 
@@ -283,12 +304,12 @@ private fun AppDrawer(currentRoute: String?, onNavigate: (String) -> Unit) {
                     .padding(20.dp),
             ) {
                 Text(
-                    text = com.huanglongmao.onlinefmradio.core.constants.AppConstants.APP_NAME,
+                    text = AppConstants.APP_NAME,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Text(
-                    text = "v${com.huanglongmao.onlinefmradio.core.constants.AppConstants.APP_VERSION}",
+                    text = "v${AppConstants.APP_VERSION}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )

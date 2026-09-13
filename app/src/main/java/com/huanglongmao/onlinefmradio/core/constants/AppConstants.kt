@@ -1,16 +1,27 @@
 package com.huanglongmao.onlinefmradio.core.constants
 
-/// 应用全局常量配置（对应 Flutter 版 app_constants.dart）
+import com.huanglongmao.onlinefmradio.BuildConfig
+
+/** 应用全局常量配置（对应 Flutter 版 app_constants.dart） */
 object AppConstants {
     const val APP_NAME = "听电台"
-    const val APP_VERSION = "1.0.0"
-    const val APP_BUILD_NUMBER = "1"
+
+    /**
+     * 版本号读取 BuildConfig（与 build.gradle 的 versionName/versionCode 保持同步，
+     * 避免硬编码漂移导致检查更新失效）。
+     */
+    val APP_VERSION = BuildConfig.VERSION_NAME
+    val APP_BUILD_NUMBER = BuildConfig.VERSION_CODE.toString()
     const val PACKAGE_NAME = "com.huanglongmao.onlinefmradio"
 
-    // ===== 应用更新（方案 2：静态 update.json 版本清单）=====
+    // ===== 应用更新（优先 GitHub Releases API，静态 update.json 作为回退）=====
 
     const val GITHUB_OWNER = "ManHuanglm"
     const val GITHUB_REPO = "RadioFm"
+
+    /** GitHub Releases API：发布版本即自动可检测，无需维护静态清单 */
+    const val GITHUB_RELEASES_API_URL =
+        "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases"
 
     /**
      * 更新清单 URL：默认走 GitHub raw 直链（与仓库 update/update.json 同步）。

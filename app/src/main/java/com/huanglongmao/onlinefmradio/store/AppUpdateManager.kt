@@ -32,26 +32,38 @@ class AppUpdateManager(
     /**
      * 检查更新。
      * [force] 为 true 时忽略 24h 间隔强制联网；失败时回退本地缓存。
-     * 返回按版本降序的发布列表；无数据返回空列表。
+     * 数据源：优先 GitHub Releases API（发布即自动可检测），
+     * 失败时回退静态 update.json 清单。
+     * 返回按新到旧排列的发布列表；无数据返回缓存（可能为空）。
      */
     suspend fun checkForUpdates(force: Boolean = false): List<ReleaseNote> = withContext(Dispatchers.IO) {
         val cached = loadCachedReleases()
         if (!force && !shouldCheck()) return@withContext cached
 
-        val remote = runCatching {
-            api.manifest(AppConstants.UPDATE_MANIFEST_URL)
-                .releases
-                .mapIndexed { index, dto ->
-                    // 列表按新到旧排列，首条正式版即最新版
-                    dto.toReleaseNote(isLatest = index == 0 && !dto.prerelease)
-                }
-        }.getOrElse { return@withContext cached }
-
-        if (remote.isEmpty()) return@withContext cached.ifEmpty { remote }
+        val remote = fetchRemote()
+        if (remote.isEmpty()) return@withContext cached
 
         persistReleases(remote)
         markChecked()
         remote
+    }
+
+    /** 拉取远端发布列表：GitHub Releases API → 静态清单 */
+    private suspend fun fetchRemote(): List<ReleaseNote> = runCatching {
+        api.githubReleases(AppConstants.GITHUB_RELEASES_API_URL)
+            .filter { !it.draft }
+            .mapIndexed { index, dto ->
+                // 列表按新到旧排列，首条正式版即最新版
+                dto.toReleaseNote(isLatest = index == 0 && !dto.prerelease)
+            }
+    }.getOrElse {
+        runCatching {
+            api.manifest(AppConstants.UPDATE_MANIFEST_URL)
+                .releases
+                .mapIndexed { index, dto ->
+                    dto.toReleaseNote(isLatest = index == 0 && !dto.prerelease)
+                }
+        }.getOrElse { emptyList() }
     }
 
     /** 从列表中取最新正式版 */

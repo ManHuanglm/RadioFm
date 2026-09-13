@@ -91,3 +91,42 @@ fun UpdateReleaseDto.toReleaseNote(isLatest: Boolean = false): ReleaseNote = Rel
     isLatest = isLatest,
     apkDownloadUrl = apkUrl,
 )
+
+/**
+ * GitHub Releases API 单条发布记录（只需用到的字段）。
+ */
+@Serializable
+data class GitHubReleaseDto(
+    @SerialName("tag_name") val tagName: String = "",
+    @SerialName("published_at") val publishedAt: String = "",
+    val body: String = "",
+    @SerialName("html_url") val htmlUrl: String = "",
+    val prerelease: Boolean = false,
+    val draft: Boolean = false,
+    val assets: List<GitHubAssetDto> = emptyList(),
+)
+
+/** GitHub Release 附件（APK 安装包） */
+@Serializable
+data class GitHubAssetDto(
+    val name: String = "",
+    @SerialName("browser_download_url") val browserDownloadUrl: String = "",
+)
+
+/** GitHubReleaseDto → ReleaseNote（APK 优先选 universal 包，其次任意 .apk） */
+fun GitHubReleaseDto.toReleaseNote(isLatest: Boolean = false): ReleaseNote {
+    val apk = assets.firstOrNull {
+        it.name.endsWith(".apk", ignoreCase = true) && it.name.contains("universal", ignoreCase = true)
+    }?.browserDownloadUrl
+        ?: assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }?.browserDownloadUrl
+    return ReleaseNote(
+        version = tagName,
+        normalizedVersion = ReleaseNote.normalizeVersion(tagName),
+        publishedAt = publishedAt,
+        body = body,
+        htmlUrl = htmlUrl,
+        prerelease = prerelease,
+        isLatest = isLatest,
+        apkDownloadUrl = apk,
+    )
+}

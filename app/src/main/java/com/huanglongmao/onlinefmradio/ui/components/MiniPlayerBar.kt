@@ -48,6 +48,15 @@ import com.huanglongmao.onlinefmradio.store.dataStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 
+/** 展开态无操作自动收缩延时 */
+private const val AUTO_COLLAPSE_DELAY_MS = 10_000L
+
+/** 水平拖动触发阈值（左滑收缩 / 右滑进播放页） */
+private val DRAG_TRIGGER_THRESHOLD = 72.dp
+
+/** 拖动最大跟随位移（像素） */
+private const val DRAG_MAX_OFFSET_PX = 160f
+
 /**
  * 迷你播放条——展开态（对应 Flutter 版 mini_player_bar.dart）。
  * 位于底部导航上方，点击进入播放页；左滑收缩；
@@ -81,7 +90,7 @@ fun MiniPlayerBar(
     // 展开态 10 秒无操作自动收缩为封面圆
     LaunchedEffect(expanded, autoCollapse, interactionKey, station?.id) {
         if (expanded && autoCollapse && station != null) {
-            delay(10_000)
+            delay(AUTO_COLLAPSE_DELAY_MS)
             onCollapse()
         }
     }
@@ -124,7 +133,7 @@ fun CollapsedMiniCover(
             .size(48.dp)
             .graphicsLayer { translationX = dragX }
             .pointerInput(Unit) {
-                val openThreshold = 72.dp.toPx()
+                val openThreshold = DRAG_TRIGGER_THRESHOLD.toPx()
                 detectHorizontalDragGestures(
                     onDragEnd = {
                         if (dragX >= openThreshold) onOpenPlayer()
@@ -132,7 +141,7 @@ fun CollapsedMiniCover(
                     },
                     onDragCancel = { dragX = 0f },
                 ) { change, amount ->
-                    dragX = (dragX + amount).coerceIn(0f, 160f)
+                    dragX = (dragX + amount).coerceIn(0f, DRAG_MAX_OFFSET_PX)
                     change.consume()
                 }
             }
@@ -191,7 +200,7 @@ private fun ExpandedBar(
             .clip(RoundedCornerShape(16.dp))
             .graphicsLayer { translationX = dragX }
             .pointerInput(Unit) {
-                val collapseThreshold = 72.dp.toPx()
+                val collapseThreshold = DRAG_TRIGGER_THRESHOLD.toPx()
                 detectHorizontalDragGestures(
                     onDragEnd = {
                         if (dragX <= -collapseThreshold) onCollapse()
@@ -199,7 +208,7 @@ private fun ExpandedBar(
                     },
                     onDragCancel = { dragX = 0f },
                 ) { change, amount ->
-                    dragX = (dragX + amount).coerceIn(-160f, 0f)
+                    dragX = (dragX + amount).coerceIn(-DRAG_MAX_OFFSET_PX, 0f)
                     change.consume()
                 }
             }

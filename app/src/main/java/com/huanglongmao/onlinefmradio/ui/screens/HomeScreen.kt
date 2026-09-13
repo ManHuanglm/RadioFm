@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +45,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanglongmao.onlinefmradio.App
 import com.huanglongmao.onlinefmradio.core.constants.AppConstants
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
+import com.huanglongmao.onlinefmradio.core.util.REGION_ORDER
 import com.huanglongmao.onlinefmradio.core.util.TranslationUtils
+import com.huanglongmao.onlinefmradio.core.util.regionOfCountryCode
 import com.huanglongmao.onlinefmradio.data.model.Country
 import com.huanglongmao.onlinefmradio.data.model.Language
 import com.huanglongmao.onlinefmradio.data.model.NameCountDto
@@ -81,7 +84,7 @@ fun HomeScreen(onOpenDrawer: () -> Unit, onNavigate: (String) -> Unit) {
     var visibleCount by remember { mutableIntStateOf(AppConstants.PAGE_SIZE) }
     var countries by remember { mutableStateOf<List<Country>>(emptyList()) }
     var languages by remember { mutableStateOf<List<Language>>(emptyList()) }
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         all = repo.loadStations()
@@ -265,11 +268,10 @@ private fun DimensionFilterTab(
 
     // ===== 各级选项（基于上级结果聚合，带电台数）=====
     val regionOptions = remember(afterDim) {
-        val order = listOf("亚洲", "欧洲", "北美洲", "南美洲", "非洲", "大洋洲", "其他")
         afterDim.groupingBy { regionOfCountryCode(it.countryCode) }
             .eachCount()
             .entries
-            .sortedBy { order.indexOf(it.key).let { i -> if (i < 0) order.size else i } }
+            .sortedBy { REGION_ORDER.indexOf(it.key).let { i -> if (i < 0) REGION_ORDER.size else i } }
             .map { NameCountDto(name = it.key, stationCount = it.value) }
     }
     val tagOptions = remember(afterRegion) {
@@ -291,66 +293,135 @@ private fun DimensionFilterTab(
     }
 
     Column(Modifier.fillMaxSize()) {
-        // 级联筛选条
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = selectedDim != null,
-                onClick = { openSheet = 1 },
-                label = { Text(selectedDim?.let { "$dimensionLabel·$it" } ?: dimensionLabel) },
-                leadingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp)) },
-            )
-            if (showRegion) {
-                FilterChip(
-                    selected = selectedRegion != null,
-                    onClick = { openSheet = 2 },
-                    label = { Text(selectedRegion?.let { "地区·$it" } ?: "地区") },
-                    leadingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp)) },
-                )
-            }
-            FilterChip(
-                selected = selectedTag != null,
-                onClick = { openSheet = 3 },
-                label = { Text(selectedTag?.let { "标签·$it" } ?: "标签") },
-                leadingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp)) },
-            )
-        }
-        when (openSheet) {
-            1 -> FilterPickerSheet(
-                title = "按${dimensionLabel}筛选", items = items, selected = selectedDim, labelOf = labelOf,
-                onSelected = { v ->
-                    selectedDim = v
-                    // 上级变更，清空下级
-                    selectedRegion = null; selectedTag = null
-                    onSelectionChanged(v); openSheet = 0
-                },
-                onDismiss = { openSheet = 0 },
-            )
-            2 -> FilterPickerSheet(
-                title = "按地区筛选", items = regionOptions, selected = selectedRegion,
-                onSelected = { v ->
-                    selectedRegion = v
-                    selectedTag = null
-                    openSheet = 0
-                },
-                onDismiss = { openSheet = 0 },
-            )
-            3 -> FilterPickerSheet(
-                title = "按标签筛选", items = tagOptions, selected = selectedTag,
-                onSelected = { v -> selectedTag = v; openSheet = 0 },
-                onDismiss = { openSheet = 0 },
-            )
-        }
+        DimensionFilterChipsRow(
+            dimensionLabel = dimensionLabel,
+            selectedDim = selectedDim,
+            selectedRegion = selectedRegion,
+            selectedTag = selectedTag,
+            showRegion = showRegion,
+            onOpenSheet = { openSheet = it },
+        )
+        DimensionFilterSheets(
+            openSheet = openSheet,
+            dimensionLabel = dimensionLabel,
+            items = items,
+            regionOptions = regionOptions,
+            tagOptions = tagOptions,
+            selectedDim = selectedDim,
+            selectedRegion = selectedRegion,
+            selectedTag = selectedTag,
+            labelOf = labelOf,
+            onSelectDim = { v ->
+                selectedDim = v
+                // 上级变更，清空下级
+                selectedRegion = null
+                selectedTag = null
+                onSelectionChanged(v)
+            },
+            onSelectRegion = { v ->
+                selectedRegion = v
+                selectedTag = null
+            },
+            onSelectTag = { v -> selectedTag = v },
+            onDismiss = { openSheet = 0 },
+        )
         StationListBody(
             stations = filtered.take(visibleCount),
             hasMore = visibleCount < filtered.size,
             onReachEnd = { visibleCount += AppConstants.PAGE_SIZE },
             emptyText = emptyText,
+        )
+    }
+}
+
+/** 级联筛选 Chip 行：维度 / 地区 / 标签 */
+@Composable
+private fun DimensionFilterChipsRow(
+    dimensionLabel: String,
+    selectedDim: String?,
+    selectedRegion: String?,
+    selectedTag: String?,
+    showRegion: Boolean,
+    onOpenSheet: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilterChip(
+            selected = selectedDim != null,
+            onClick = { onOpenSheet(1) },
+            label = { Text(selectedDim?.let { "$dimensionLabel·$it" } ?: dimensionLabel) },
+            leadingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp)) },
+        )
+        if (showRegion) {
+            FilterChip(
+                selected = selectedRegion != null,
+                onClick = { onOpenSheet(2) },
+                label = { Text(selectedRegion?.let { "地区·$it" } ?: "地区") },
+                leadingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp)) },
+            )
+        }
+        FilterChip(
+            selected = selectedTag != null,
+            onClick = { onOpenSheet(3) },
+            label = { Text(selectedTag?.let { "标签·$it" } ?: "标签") },
+            leadingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp)) },
+        )
+    }
+}
+
+/** 级联筛选底部弹层（按 [openSheet] 显示维度/地区/标签三选一） */
+@Composable
+private fun DimensionFilterSheets(
+    openSheet: Int,
+    dimensionLabel: String,
+    items: List<NameCountDto>,
+    regionOptions: List<NameCountDto>,
+    tagOptions: List<NameCountDto>,
+    selectedDim: String?,
+    selectedRegion: String?,
+    selectedTag: String?,
+    labelOf: (NameCountDto) -> String,
+    onSelectDim: (String?) -> Unit,
+    onSelectRegion: (String?) -> Unit,
+    onSelectTag: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    when (openSheet) {
+        1 -> FilterPickerSheet(
+            title = "按${dimensionLabel}筛选",
+            items = items,
+            selected = selectedDim,
+            labelOf = labelOf,
+            onSelected = {
+                onSelectDim(it)
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
+        2 -> FilterPickerSheet(
+            title = "按地区筛选",
+            items = regionOptions,
+            selected = selectedRegion,
+            onSelected = {
+                onSelectRegion(it)
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
+        3 -> FilterPickerSheet(
+            title = "按标签筛选",
+            items = tagOptions,
+            selected = selectedTag,
+            onSelected = {
+                onSelectTag(it)
+                onDismiss()
+            },
+            onDismiss = onDismiss,
         )
     }
 }

@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +46,7 @@ import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
 import com.huanglongmao.onlinefmradio.data.model.Station
 import com.huanglongmao.onlinefmradio.ui.components.StationListBody
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -207,7 +209,7 @@ fun LocalStationsScreen(onBack: () -> Unit) {
 
 /** StateFlow<List<T>> 的 collectAsState 简写 */
 @Composable
-private fun <T> kotlinx.coroutines.flow.StateFlow<List<T>>.collectAsListState(): androidx.compose.runtime.State<List<T>> =
+private fun <T> StateFlow<List<T>>.collectAsListState(): State<List<T>> =
     collectAsStateWithLifecycle()
 
 /**

@@ -5,8 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -58,8 +61,8 @@ fun MusicVisualizer(
                     drawRoundRect(
                         color = color,
                         topLeft = Offset(i * (barWidth * 1.6f) + barWidth * 0.3f, h - barH),
-                        size = androidx.compose.ui.geometry.Size(barWidth, barH),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(barWidth / 2),
+                        size = Size(barWidth, barH),
+                        cornerRadius = CornerRadius(barWidth / 2),
                         style = Fill,
                     )
                 }
@@ -69,7 +72,7 @@ fun MusicVisualizer(
                 val lineCount = 3
                 for (l in 0 until lineCount) {
                     val phase = time * (1.2f + l * 0.35f) + l * 2.1f
-                    val path = androidx.compose.ui.graphics.Path()
+                    val path = Path()
                     val steps = 48
                     for (i in 0..steps) {
                         val x = w * i / steps

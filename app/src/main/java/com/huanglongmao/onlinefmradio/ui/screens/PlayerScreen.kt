@@ -1,5 +1,7 @@
 package com.huanglongmao.onlinefmradio.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
@@ -60,16 +63,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
+import com.huanglongmao.onlinefmradio.core.theme.FavoriteRed
 import com.huanglongmao.onlinefmradio.core.theme.GradientThemes
+import com.huanglongmao.onlinefmradio.core.theme.PlayerErrorText
+import com.huanglongmao.onlinefmradio.data.model.Station
 import com.huanglongmao.onlinefmradio.store.VisualizerStyle
 import com.huanglongmao.onlinefmradio.ui.components.MusicVisualizer
+import com.huanglongmao.onlinefmradio.ui.components.SlimSlider
 import com.huanglongmao.onlinefmradio.ui.components.StationLogo
 import com.huanglongmao.onlinefmradio.ui.components.playAction
 import kotlinx.coroutines.launch
@@ -106,13 +115,15 @@ fun PlayerScreen(onBack: () -> Unit) {
     var showVolumeSheet by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     var showStationInfo by remember { mutableStateOf(false) }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
 
     val history by container.historyStore.history.collectAsStateWithLifecycle()
     val playHistory = playAction()
 
     val theme = GradientThemes.resolve(themeIndex)
-    val isFav = station != null && favIds.contains(station!!.id)
+    // 一次性快照可空状态，避免委托属性二次读取 + !! 强制解包
+    val st = station
+    val isFav = st != null && favIds.contains(st.id)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -129,75 +140,19 @@ fun PlayerScreen(onBack: () -> Unit) {
                     }
                 },
         ) {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = station?.name ?: "播放",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            PlayerTopBar(
+                title = station?.name ?: "播放",
+                onBack = onBack,
+                menuExpanded = showMoreMenu,
+                onMenuExpandedChange = { showMoreMenu = it },
+                onShare = {
+                    showMoreMenu = false
+                    station?.let { s -> shareStation(context, s) }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = "收起",
-                            tint = Color.White,
-                        )
-                    }
+                onShowInfo = {
+                    showMoreMenu = false
+                    if (station != null) showStationInfo = true
                 },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showMoreMenu = true }) {
-                            Icon(
-                                Icons.Filled.MoreVert,
-                                contentDescription = "更多",
-                                tint = Color.White,
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMoreMenu,
-                            onDismissRequest = { showMoreMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("分享电台") },
-                                onClick = {
-                                    showMoreMenu = false
-                                    station?.let { s ->
-                                        val intent = android.content.Intent(
-                                            android.content.Intent.ACTION_SEND,
-                                        ).apply {
-                                            type = "text/plain"
-                                            putExtra(
-                                                android.content.Intent.EXTRA_TEXT,
-                                                "${s.name}\n${s.streamUrl}",
-                                            )
-                                        }
-                                        context.startActivity(
-                                            android.content.Intent.createChooser(intent, "分享电台"),
-                                        )
-                                    }
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("电台信息") },
-                                onClick = {
-                                    showMoreMenu = false
-                                    if (station != null) showStationInfo = true
-                                },
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    navigationIconContentColor = Color.White,
-                ),
             )
 
             Column(
@@ -240,11 +195,12 @@ fun PlayerScreen(onBack: () -> Unit) {
                 }
 
                 // 状态提示：缓冲 / 重连 / 错误
+                val currentError = errorMessage
                 when {
-                    errorMessage != null -> {
+                    currentError != null -> {
                         Text(
-                            text = errorMessage!!,
-                            color = Color(0xFFFFCDD2),
+                            text = currentError,
+                            color = PlayerErrorText,
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
                         )
@@ -278,7 +234,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                     CircleAction(
                         icon = if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         label = "收藏",
-                        iconTint = if (isFav) Color(0xFFF87171) else Color.White,
+                        iconTint = if (isFav) FavoriteRed else Color.White,
                     ) {
                         station?.let { s -> scope.launch { container.favoritesStore.toggle(s) } }
                     }
@@ -298,52 +254,14 @@ fun PlayerScreen(onBack: () -> Unit) {
                 Spacer(Modifier.weight(1.2f))
 
                 // 播放控制
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(36.dp),
-                ) {
-                    IconButton(onClick = { controller.skipToPrevious() }) {
-                        Icon(
-                            Icons.Filled.SkipPrevious,
-                            contentDescription = "上一台",
-                            tint = Color.White,
-                            modifier = Modifier.size(44.dp),
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(88.dp)
-                            .shadow(10.dp, RoundedCornerShape(44.dp))
-                            .clip(RoundedCornerShape(44.dp))
-                            .background(Color.White.copy(alpha = 0.22f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        IconButton(onClick = { controller.togglePlayPause() }) {
-                            if (isBuffering) {
-                                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
-                            } else {
-                                Icon(
-                                    imageVector = when {
-                                        isPlaying -> Icons.Filled.Pause
-                                        station != null -> Icons.Filled.PlayArrow
-                                        else -> Icons.Filled.Stop
-                                    },
-                                    contentDescription = "播放/暂停",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(48.dp),
-                                )
-                            }
-                        }
-                    }
-                    IconButton(onClick = { controller.skipToNext() }) {
-                        Icon(
-                            Icons.Filled.SkipNext,
-                            contentDescription = "下一台",
-                            tint = Color.White,
-                            modifier = Modifier.size(44.dp),
-                        )
-                    }
-                }
+                PlayControlsRow(
+                    isPlaying = isPlaying,
+                    isBuffering = isBuffering,
+                    hasStation = station != null,
+                    onPrevious = { controller.skipToPrevious() },
+                    onTogglePlay = { controller.togglePlayPause() },
+                    onNext = { controller.skipToNext() },
+                )
 
                 Spacer(Modifier.weight(1f))
 
@@ -367,116 +285,31 @@ fun PlayerScreen(onBack: () -> Unit) {
 
     // 音量调节弹层
     if (showVolumeSheet) {
-        ModalBottomSheet(onDismissRequest = { showVolumeSheet = false }) {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("音量", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(18.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.VolumeDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    com.huanglongmao.onlinefmradio.ui.components.SlimSlider(
-                        value = volume,
-                        onValueChange = { controller.setVolume(it) },
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-        }
+        VolumeSheet(
+            volume = volume,
+            onVolumeChange = { controller.setVolume(it) },
+            onDismiss = { showVolumeSheet = false },
+        )
     }
 
     // 电台信息弹窗
     if (showStationInfo) {
         station?.let { s ->
-            AlertDialog(
-                onDismissRequest = { showStationInfo = false },
-                title = {
-                    Text(s.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        InfoRow("国家", "${s.flagEmoji} ${s.country}")
-                        if (s.language.isNotBlank()) InfoRow("语言", s.language)
-                        InfoRow("类型", s.category)
-                        if (s.bitrate > 0) InfoRow("比特率", "${s.bitrate} kbps")
-                        if (s.votes > 0) InfoRow("投票", "${s.votes}")
-                        InfoRow("地址", s.streamUrl)
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showStationInfo = false }) { Text("关闭") }
-                },
-            )
+            StationInfoDialog(station = s, onDismiss = { showStationInfo = false })
         }
     }
 
     // 上滑弹出的最近播放列表
     if (showHistorySheet) {
-        ModalBottomSheet(onDismissRequest = { showHistorySheet = false }) {
-            Column(Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "最近播放",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(Modifier.weight(1f))
-                    if (history.isNotEmpty()) {
-                        TextButton(onClick = { scope.launch { container.historyStore.clear() } }) {
-                            Text("清空")
-                        }
-                    }
-                }
-                if (history.isEmpty()) {
-                    Text(
-                        "暂无播放记录",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                    )
-                } else {
-                    LazyColumn(Modifier.fillMaxWidth()) {
-                        items(history, key = { it.id }) { st ->
-                            ListItem(
-                                headlineContent = {
-                                    Text(st.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                },
-                                supportingContent = {
-                                    Text("${st.flagEmoji} ${st.country}")
-                                },
-                                leadingContent = {
-                                    StationLogo(station = st, size = 44.dp, cornerRadius = 10.dp)
-                                },
-                                modifier = Modifier.clickable {
-                                    playHistory(st)
-                                    showHistorySheet = false
-                                },
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-            }
-        }
+        HistorySheet(
+            history = history,
+            onPlay = {
+                playHistory(it)
+                showHistorySheet = false
+            },
+            onClear = { scope.launch { container.historyStore.clear() } },
+            onDismiss = { showHistorySheet = false },
+        )
     }
 
     if (showSleepDialog) {
@@ -493,6 +326,254 @@ fun PlayerScreen(onBack: () -> Unit) {
             },
             onDismiss = { showSleepDialog = false },
         )
+    }
+}
+
+/** 播放页顶栏：标题 + 收起 + 更多菜单（分享 / 电台信息） */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlayerTopBar(
+    title: String,
+    onBack: () -> Unit,
+    menuExpanded: Boolean,
+    onMenuExpandedChange: (Boolean) -> Unit,
+    onShare: () -> Unit,
+    onShowInfo: () -> Unit,
+) {
+    CenterAlignedTopAppBar(
+        title = {
+            Text(
+                text = title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "收起",
+                    tint = Color.White,
+                )
+            }
+        },
+        actions = {
+            Box {
+                IconButton(onClick = { onMenuExpandedChange(true) }) {
+                    Icon(
+                        Icons.Filled.MoreVert,
+                        contentDescription = "更多",
+                        tint = Color.White,
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { onMenuExpandedChange(false) },
+                ) {
+                    DropdownMenuItem(text = { Text("分享电台") }, onClick = onShare)
+                    DropdownMenuItem(text = { Text("电台信息") }, onClick = onShowInfo)
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            navigationIconContentColor = Color.White,
+        ),
+    )
+}
+
+/** 系统分享电台（名称 + 流地址） */
+private fun shareStation(context: Context, station: Station) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, "${station.name}\n${station.streamUrl}")
+    }
+    context.startActivity(Intent.createChooser(intent, "分享电台"))
+}
+
+/** 播放控制排：上一台 / 播放暂停 / 下一台 */
+@Composable
+private fun PlayControlsRow(
+    isPlaying: Boolean,
+    isBuffering: Boolean,
+    hasStation: Boolean,
+    onPrevious: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(36.dp),
+    ) {
+        IconButton(onClick = onPrevious) {
+            Icon(
+                Icons.Filled.SkipPrevious,
+                contentDescription = "上一台",
+                tint = Color.White,
+                modifier = Modifier.size(44.dp),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .shadow(10.dp, RoundedCornerShape(44.dp))
+                .clip(RoundedCornerShape(44.dp))
+                .background(Color.White.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(onClick = onTogglePlay) {
+                if (isBuffering) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Icon(
+                        imageVector = when {
+                            isPlaying -> Icons.Filled.Pause
+                            hasStation -> Icons.Filled.PlayArrow
+                            else -> Icons.Filled.Stop
+                        },
+                        contentDescription = "播放/暂停",
+                        tint = Color.White,
+                        modifier = Modifier.size(48.dp),
+                    )
+                }
+            }
+        }
+        IconButton(onClick = onNext) {
+            Icon(
+                Icons.Filled.SkipNext,
+                contentDescription = "下一台",
+                tint = Color.White,
+                modifier = Modifier.size(44.dp),
+            )
+        }
+    }
+}
+
+/** 音量调节弹层 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VolumeSheet(
+    volume: Float,
+    onVolumeChange: (Float) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("音量", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(18.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.VolumeDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp),
+                )
+                SlimSlider(
+                    value = volume,
+                    onValueChange = onVolumeChange,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** 电台信息弹窗 */
+@Composable
+private fun StationInfoDialog(station: Station, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(station.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                InfoRow("国家", "${station.flagEmoji} ${station.country}")
+                if (station.language.isNotBlank()) InfoRow("语言", station.language)
+                InfoRow("类型", station.category)
+                if (station.bitrate > 0) InfoRow("比特率", "${station.bitrate} kbps")
+                if (station.votes > 0) InfoRow("投票", "${station.votes}")
+                InfoRow("地址", station.streamUrl)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+    )
+}
+
+/** 上滑弹出的最近播放列表 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistorySheet(
+    history: List<Station>,
+    onPlay: (Station) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "最近播放",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.weight(1f))
+                if (history.isNotEmpty()) {
+                    TextButton(onClick = onClear) {
+                        Text("清空")
+                    }
+                }
+            }
+            if (history.isEmpty()) {
+                Text(
+                    "暂无播放记录",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                )
+            } else {
+                LazyColumn(Modifier.fillMaxWidth()) {
+                    items(history, key = { it.id }) { st ->
+                        ListItem(
+                            headlineContent = {
+                                Text(st.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            },
+                            supportingContent = {
+                                Text("${st.flagEmoji} ${st.country}")
+                            },
+                            leadingContent = {
+                                StationLogo(station = st, size = 44.dp, cornerRadius = 10.dp)
+                            },
+                            modifier = Modifier.clickable { onPlay(st) },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
     }
 }
 
@@ -555,7 +636,7 @@ private fun InfoRow(label: String, value: String) {
 /** 圆形功能按钮 + 底部文字标签（对齐原版播放页功能排样式） */
 @Composable
 private fun CircleAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     iconTint: Color = Color.White,
     onClick: () -> Unit,
@@ -564,7 +645,7 @@ private fun CircleAction(
         Box(
             modifier = Modifier
                 .size(54.dp)
-                .clip(androidx.compose.foundation.shape.CircleShape)
+                .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.14f))
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,

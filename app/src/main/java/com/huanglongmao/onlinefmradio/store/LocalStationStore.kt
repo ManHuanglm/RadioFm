@@ -27,33 +27,54 @@ class LocalStationStore(private val settings: SettingsDataStore) {
     private val _stations = MutableStateFlow<List<Station>>(emptyList())
     val stations: StateFlow<List<Station>> = _stations
 
-    /** 启动时加载 */
+    /** 启动时加载（顺带清理存量重复：ID 或流地址相同视为同一电台） */
     suspend fun load() {
         mutex.withLock {
             val raw = settings.getString(AppConstants.KEY_LOCAL_STATIONS)
             val list = raw?.let {
                 runCatching { json.decodeFromString(serializer, it) }.getOrElse { emptyList() }
             } ?: emptyList()
-            _stations.value = list
+            val deduped = dedupe(list)
+            if (deduped.size != list.size) persist(deduped)
+            _stations.value = deduped
         }
     }
 
-    /** 导入电台列表（按 ID 去重），返回新增数量 */
+    /** 导入电台列表（按 ID 与流地址双重去重），返回新增数量 */
     suspend fun importStations(stations: List<Station>): Int {
         var added = 0
         mutex.withLock {
             val current = _stations.value.toMutableList()
+            val existingIds = current.mapTo(HashSet()) { it.id }
+            val existingUrls = current.mapTo(HashSet()) { it.streamUrl.trim().lowercase() }
             for (station in stations) {
-                if (station.id.isEmpty()) continue
-                if (current.none { it.id == station.id }) {
+                if (station.id.isEmpty() && station.streamUrl.isEmpty()) continue
+                val url = station.streamUrl.trim().lowercase()
+                val duplicate = (station.id.isNotEmpty() && station.id in existingIds) ||
+                    (url.isNotEmpty() && url in existingUrls)
+                if (!duplicate) {
                     current.add(station)
                     added++
+                    if (station.id.isNotEmpty()) existingIds.add(station.id)
+                    if (url.isNotEmpty()) existingUrls.add(url)
                 }
             }
             _stations.value = current
             persist(current)
         }
         return added
+    }
+
+    /** 保留首次出现，剔除 ID 或流地址重复的条目 */
+    private fun dedupe(list: List<Station>): List<Station> {
+        val seenIds = HashSet<String>()
+        val seenUrls = HashSet<String>()
+        return list.filter { s ->
+            val url = s.streamUrl.trim().lowercase()
+            val idDup = s.id.isNotEmpty() && !seenIds.add(s.id)
+            val urlDup = url.isNotEmpty() && !seenUrls.add(url)
+            !idDup && !urlDup
+        }
     }
 
     /** 移除单个本地电台 */

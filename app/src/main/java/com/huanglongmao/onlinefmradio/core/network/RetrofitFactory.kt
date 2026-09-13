@@ -9,6 +9,7 @@ import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -63,19 +64,19 @@ object RetrofitFactory {
      */
     private class RetryInterceptor(private val maxRetry: Int) : Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {
-            var lastException: java.io.IOException? = null
+            var lastException: IOException? = null
             repeat(maxRetry + 1) { attempt ->
                 try {
                     val request = chain.request()
                     val response = chain.proceed(request)
                     if (response.isSuccessful || attempt == maxRetry) return response
                     response.close()
-                } catch (e: java.io.IOException) {
+                } catch (e: IOException) {
                     lastException = e
                     if (attempt == maxRetry) throw e
                 }
             }
-            throw lastException ?: java.io.IOException("network request failed")
+            throw lastException ?: IOException("network request failed")
         }
     }
 }
