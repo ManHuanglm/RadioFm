@@ -1,6 +1,7 @@
 package com.huanglongmao.onlinefmradio.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +14,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -22,10 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,12 +40,173 @@ import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
 import com.huanglongmao.onlinefmradio.core.util.TranslationUtils
 import com.huanglongmao.onlinefmradio.data.model.Country
 import com.huanglongmao.onlinefmradio.data.model.Language
+import com.huanglongmao.onlinefmradio.data.model.NameCountDto
+import com.huanglongmao.onlinefmradio.data.model.Station
 import com.huanglongmao.onlinefmradio.data.model.Tag
+import com.huanglongmao.onlinefmradio.ui.components.FilterPickerSheet
 
 /**
  * 维度列表三兄弟（对应 Flutter 版 country_list_page / language_list_page / tag_list_page）。
  * 数据来自本地缓存统计，支持关键词过滤。
+ * 国家/语言页额外支持 地区 / 分类 / 标签 筛选（基于本地电台数据聚合）。
  */
+
+// ===== 地区（大洲）映射 =====
+
+/** ISO 3166-1 alpha-2 → 大洲（按区域分组，未覆盖的归入"其他"） */
+private val regionGroups: Map<String, List<String>> = linkedMapOf(
+    "亚洲" to listOf(
+        "CN", "JP", "KR", "KP", "MN", "HK", "MO", "TW",
+        "IN", "PK", "BD", "LK", "NP", "BT", "MV",
+        "ID", "MY", "SG", "TH", "VN", "PH", "MM", "KH", "LA", "BN",
+        "KZ", "UZ", "TM", "KG", "TJ", "AF", "MN",
+        "IR", "IQ", "IL", "PS", "JO", "LB", "SY", "SA", "AE", "YE", "OM", "QA", "BH", "KW", "TR", "GE", "AM", "AZ", "CY",
+    ),
+    "欧洲" to listOf(
+        "GB", "IE", "FR", "DE", "IT", "ES", "PT", "NL", "BE", "LU", "CH", "AT",
+        "SE", "NO", "DK", "FI", "IS",
+        "PL", "CZ", "SK", "HU", "RO", "BG", "GR", "HR", "SI", "RS", "BA", "MK", "ME", "AL", "XK",
+        "LT", "LV", "EE", "BY", "UA", "MD", "RU", "MT", "MC", "AD", "SM", "LI",
+    ),
+    "北美洲" to listOf(
+        "US", "CA", "MX", "GL",
+        "GT", "BZ", "SV", "HN", "NI", "CR", "PA",
+        "CU", "HT", "DO", "JM", "TT", "BS", "BB", "AI", "AG", "DM", "GD", "KN", "LC", "VC", "PR", "GP", "MQ", "CW", "AW", "SX", "BL", "MF", "KY", "VI", "TC", "MS", "BM",
+    ),
+    "南美洲" to listOf(
+        "BR", "AR", "CL", "PE", "CO", "VE", "EC", "UY", "PY", "BO", "GY", "SR", "GF", "FK",
+    ),
+    "非洲" to listOf(
+        "EG", "LY", "TN", "DZ", "MA", "EH",
+        "SD", "SS", "ET", "ER", "DJ", "SO", "KE", "UG", "TZ", "RW", "BI",
+        "CD", "CG", "CF", "CM", "NG", "BJ", "TG", "GH", "CI", "LR", "SL", "GN", "GM", "BF", "ML", "NE", "TD", "SN", "GW", "CV", "ST", "GQ", "GA",
+        "ZM", "ZW", "MW", "MZ", "AO", "NA", "BW", "SZ", "LS", "ZA",
+        "MG", "MU", "KM", "YT", "SC", "RE", "SH",
+    ),
+    "大洋洲" to listOf(
+        "AU", "NZ", "PG", "FJ", "SB", "VU", "NC", "PF", "WS", "TO", "TV",
+        "NR", "KI", "FM", "MH", "PW", "GU", "CK", "NU", "AS", "TK", "PN", "NF", "WF", "MP",
+    ),
+)
+
+/** 国家代码 → 地区 快速查询表 */
+internal val countryCodeToRegion: Map<String, String> by lazy {
+    val map = HashMap<String, String>()
+    regionGroups.forEach { (region, codes) -> codes.forEach { map[it] = region } }
+    map
+}
+
+internal fun regionOfCountryCode(code: String): String =
+    countryCodeToRegion[code.uppercase()] ?: "其他"
+
+// ===== 维度元数据（用于地区/分类/标签筛选）=====
+
+/** 维度条目（国家/语言）聚合出的筛选属性 */
+private class DimMeta(val regions: MutableSet<String> = HashSet()) {
+    val tags = HashSet<String>()
+}
+
+/** 从电台列表按 keySelector 分组构建筛选元数据 */
+private fun buildDimMetas(
+    stations: List<Station>,
+    keySelector: (Station) -> String?,
+    regionSelector: (Station) -> String,
+): Map<String, DimMeta> {
+    val metas = HashMap<String, DimMeta>()
+    for (s in stations) {
+        val key = keySelector(s) ?: continue
+        if (key.isEmpty()) continue
+        val meta = metas.getOrPut(key) { DimMeta() }
+        meta.regions.add(regionSelector(s))
+        s.description.split(',').map { it.trim() }.filter { it.isNotEmpty() }.forEach {
+            meta.tags.add(it)
+        }
+    }
+    return metas
+}
+
+/** 筛选目标（地区/标签） */
+private const val SHEET_NONE = 0
+private const val SHEET_REGION = 1
+private const val SHEET_TAG = 2
+
+/** 筛选维度是否全部未启用 */
+private fun noFilter(region: String?, tag: String?) = region == null && tag == null
+
+/** 维度筛选条：地区（可选）/ 标签 筛选 Chip + 底部选择弹层 */
+@Composable
+private fun DimensionFilterBar(
+    showRegion: Boolean,
+    regions: List<NameCountDto>,
+    tags: List<NameCountDto>,
+    regionSel: String?,
+    tagSel: String?,
+    onRegion: (String?) -> Unit,
+    onTag: (String?) -> Unit,
+) {
+    var sheet by remember { mutableIntStateOf(SHEET_NONE) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (showRegion) {
+            FilterChip(
+                selected = regionSel != null,
+                onClick = { sheet = SHEET_REGION },
+                label = { Text(regionSel?.let { "地区·$it" } ?: "地区") },
+                leadingIcon = {
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp))
+                },
+            )
+        }
+        FilterChip(
+            selected = tagSel != null,
+            onClick = { sheet = SHEET_TAG },
+            label = { Text(tagSel?.let { "标签·$it" } ?: "标签") },
+            leadingIcon = {
+                Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.width(18.dp))
+            },
+        )
+    }
+    when (sheet) {
+        SHEET_REGION -> FilterPickerSheet(
+            title = "按地区筛选", items = regions, selected = regionSel,
+            onSelected = { onRegion(it); sheet = SHEET_NONE },
+            onDismiss = { sheet = SHEET_NONE },
+        )
+        SHEET_TAG -> FilterPickerSheet(
+            title = "按标签筛选", items = tags, selected = tagSel,
+            onSelected = { onTag(it); sheet = SHEET_NONE },
+            onDismiss = { sheet = SHEET_NONE },
+        )
+    }
+}
+
+/** 筛选条件是否命中（meta 为空表示该条目无电台数据，启用筛选时隐藏） */
+private fun metaPasses(
+    meta: DimMeta?,
+    regionSel: String?,
+    tagSel: String?,
+): Boolean {
+    if (noFilter(regionSel, tagSel)) return true
+    if (meta == null) return false
+    if (regionSel != null && regionSel !in meta.regions) return false
+    if (tagSel != null && meta.tags.none { it.equals(tagSel, ignoreCase = true) }) return false
+    return true
+}
+
+/** 筛选后的地区选项（仅展示数据中出现的地区，附条目数） */
+private fun regionOptions(metas: Map<String, DimMeta>): List<NameCountDto> =
+    metas.values
+        .flatMap { it.regions }
+        .groupingBy { it }
+        .eachCount()
+        .entries
+        .sortedByDescending { it.value }
+        .map { NameCountDto(name = it.key, stationCount = it.value) }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +217,7 @@ private fun DimensionListScaffold(
     labelOf: (String) -> String = { it },
     onBack: () -> Unit,
     onOpen: (name: String, extra: String) -> Unit,
+    filterBar: (@Composable () -> Unit)? = null,
 ) {
     var filter by remember { mutableStateOf("") }
     val filtered = remember(names, filter) {
@@ -60,7 +226,7 @@ private fun DimensionListScaffold(
     }
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -78,6 +244,7 @@ private fun DimensionListScaffold(
                 placeholder = { Text("筛选") },
                 singleLine = true,
             )
+            filterBar?.invoke()
             when {
                 loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -100,42 +267,97 @@ private fun DimensionListScaffold(
     }
 }
 
-/** 国家列表页 */
+/** 国家列表页（支持 标签 筛选） */
 @Composable
 fun CountryListScreen(onBack: () -> Unit, onOpen: (name: String, code: String) -> Unit) {
     val repo = LocalAppContainer.current.stationRepository
     var loading by remember { mutableStateOf(true) }
     var countries by remember { mutableStateOf<List<Country>>(emptyList()) }
+    var metas by remember { mutableStateOf(emptyMap<String, DimMeta>()) }
+    var tagOptions by remember { mutableStateOf<List<Tag>>(emptyList()) }
+    var tagSel by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
+        val stations = repo.loadStations()
         countries = repo.loadCountries()
+        metas = buildDimMetas(
+            stations,
+            keySelector = { it.country },
+            regionSelector = { regionOfCountryCode(it.countryCode) },
+        )
+        tagOptions = repo.loadTags()
         loading = false
+    }
+
+    val visible = remember(countries, metas, tagSel) {
+        if (tagSel == null) countries
+        else countries.filter { metaPasses(metas[it.name], null, tagSel) }
     }
     DimensionListScaffold(
         title = "国家",
         loading = loading,
-        names = countries.map { Triple(it.name, it.countryCode, it.stationCount) },
+        names = visible.map { Triple(it.name, it.countryCode, it.stationCount) },
         onBack = onBack,
         onOpen = onOpen,
+        filterBar = {
+            DimensionFilterBar(
+                showRegion = false,
+                regions = emptyList(),
+                tags = tagOptions.map { NameCountDto(name = it.name, stationCount = it.stationCount) },
+                regionSel = null,
+                tagSel = tagSel,
+                onRegion = { },
+                onTag = { tagSel = it },
+            )
+        },
     )
 }
 
-/** 语言列表页 */
+/** 语言列表页（支持 地区/标签 筛选；地区由该语言电台的所属国家推导） */
 @Composable
 fun LanguageListScreen(onBack: () -> Unit, onOpen: (name: String) -> Unit) {
     val repo = LocalAppContainer.current.stationRepository
     var loading by remember { mutableStateOf(true) }
     var languages by remember { mutableStateOf<List<Language>>(emptyList()) }
+    var metas by remember { mutableStateOf(emptyMap<String, DimMeta>()) }
+    var tagOptions by remember { mutableStateOf<List<Tag>>(emptyList()) }
+    var regionSel by remember { mutableStateOf<String?>(null) }
+    var tagSel by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
+        val stations = repo.loadStations()
         languages = repo.loadLanguages()
+        metas = buildDimMetas(
+            stations,
+            keySelector = { it.language },
+            regionSelector = { regionOfCountryCode(it.countryCode) },
+        )
+        tagOptions = repo.loadTags()
         loading = false
+    }
+
+    val visible = remember(languages, metas, regionSel, tagSel) {
+        if (noFilter(regionSel, tagSel)) languages
+        else languages.filter { metaPasses(metas[it.name], regionSel, tagSel) }
     }
     DimensionListScaffold(
         title = "语言",
         loading = loading,
-        names = languages.map { Triple(it.name, null, it.stationCount) },
+        names = visible.map { Triple(it.name, null as String?, it.stationCount) },
         labelOf = { TranslationUtils.getLanguageDisplayName(it) },
         onBack = onBack,
         onOpen = { name, _ -> onOpen(name) },
+        filterBar = {
+            DimensionFilterBar(
+                showRegion = true,
+                regions = remember(metas) { regionOptions(metas) },
+                tags = tagOptions.map { NameCountDto(name = it.name, stationCount = it.stationCount) },
+                regionSel = regionSel,
+                tagSel = tagSel,
+                onRegion = { regionSel = it },
+                onTag = { tagSel = it },
+            )
+        },
     )
 }
 
@@ -163,11 +385,11 @@ fun TagListScreen(onBack: () -> Unit, onOpen: (tag: String) -> Unit) {
 @Composable
 fun DimensionStationsScaffold(
     title: String,
-    load: suspend () -> List<com.huanglongmao.onlinefmradio.data.model.Station>,
+    load: suspend () -> List<Station>,
     onBack: () -> Unit,
 ) {
     var loading by remember { mutableStateOf(true) }
-    var stations by remember { mutableStateOf<List<com.huanglongmao.onlinefmradio.data.model.Station>>(emptyList()) }
+    var stations by remember { mutableStateOf<List<Station>>(emptyList()) }
     var visibleCount by remember { mutableStateOf(30) }
 
     LaunchedEffect(Unit) {
@@ -176,7 +398,7 @@ fun DimensionStationsScaffold(
     }
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text(title, maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

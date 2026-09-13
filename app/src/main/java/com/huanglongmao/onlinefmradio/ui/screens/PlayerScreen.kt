@@ -47,7 +47,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -129,7 +129,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                     }
                 },
         ) {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = station?.name ?: "播放",
@@ -221,7 +221,7 @@ fun PlayerScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(20.dp))
 
                 // 大台标
-                station?.let { StationLogo(station = it, size = 232.dp, cornerRadius = 30.dp) }
+                station?.let { StationLogo(station = it, size = 116.dp, cornerRadius = 15.dp) }
 
                 Spacer(Modifier.weight(1.2f))
 

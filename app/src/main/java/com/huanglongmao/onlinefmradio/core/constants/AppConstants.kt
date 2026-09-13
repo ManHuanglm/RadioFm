@@ -46,6 +46,13 @@ object AppConstants {
     const val KEY_VISUALIZER_STYLE = "visualizer_style"
     const val KEY_VISUALIZER_SPEED = "visualizer_speed"
 
+    // 播放行为设置
+    const val KEY_AUTO_PLAY_LAST = "auto_play_last"
+    const val KEY_MINI_AUTO_COLLAPSE = "mini_auto_collapse"
+
+    // 外观：字体缩放（1.0 标准 / 1.15 大 / 1.3 特大）
+    const val KEY_FONT_SCALE = "font_scale"
+
     // 电台数据更新断点续传
     const val KEY_UPDATE_RESUME_OFFSET = "update_resume_offset"
     const val KEY_UPDATE_RESUME_FETCHED = "update_resume_fetched"

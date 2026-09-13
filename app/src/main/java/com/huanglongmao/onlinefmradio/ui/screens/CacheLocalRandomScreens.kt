@@ -29,7 +29,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,7 +77,7 @@ fun CachedStationsScreen(onBack: () -> Unit) {
     Scaffold(
         snackbarHost = { SnackbarHost(remember { SnackbarHostState() }) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("缓存电台（${stations.size}）") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -169,7 +169,7 @@ fun LocalStationsScreen(onBack: () -> Unit) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("本地电台（${stations.size}）") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -225,7 +225,7 @@ fun RandomStationScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("随机电台") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

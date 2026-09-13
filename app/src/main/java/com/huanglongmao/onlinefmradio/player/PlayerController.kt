@@ -73,6 +73,20 @@ class PlayerController(
         }
         // 预热 MediaController
         scope.launch { runCatching { awaitController() } }
+        // 启动恢复上次播放电台：默认仅恢复至底部播放条（不出声），
+        // 开启"自动播放上次节目"后直接续播
+        scope.launch {
+            runCatching {
+                val last = historyStore.lastPlayed() ?: return@launch
+                if (_currentStation.value != null) return@launch
+                val autoPlay = settings.getBool(AppConstants.KEY_AUTO_PLAY_LAST) ?: false
+                if (autoPlay) {
+                    play(last)
+                } else {
+                    _currentStation.value = last
+                }
+            }
+        }
     }
 
     /** 构建 / 获取 MediaController（线程安全，幂等） */

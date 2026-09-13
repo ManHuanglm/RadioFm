@@ -27,7 +27,9 @@ class HistoryStore(private val settings: SettingsDataStore) {
     private val _history = MutableStateFlow<List<Station>>(emptyList())
     val history: StateFlow<List<Station>> = _history
 
-    /** 启动时加载 */
+    private var loaded = false
+
+    /** 启动时加载（幂等，可重复调用） */
     suspend fun load() {
         mutex.withLock {
             val raw = settings.getString(AppConstants.KEY_PLAY_HISTORY)
@@ -35,7 +37,14 @@ class HistoryStore(private val settings: SettingsDataStore) {
                 runCatching { json.decodeFromString(serializer, it) }.getOrElse { emptyList() }
             } ?: emptyList()
             _history.value = list
+            loaded = true
         }
+    }
+
+    /** 最近播放的电台（确保历史已加载后取头部，用于启动恢复播放条） */
+    suspend fun lastPlayed(): Station? {
+        if (!loaded) load()
+        return _history.value.firstOrNull()
     }
 
     /** 添加历史：移除旧的同 ID 记录后插入头部，超出上限移除最旧 */

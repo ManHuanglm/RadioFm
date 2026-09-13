@@ -20,20 +20,24 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanglongmao.onlinefmradio.core.constants.AppConstants
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
 import com.huanglongmao.onlinefmradio.data.model.ReleaseNote
+import kotlinx.coroutines.launch
 
 /**
  * 外围页面集合：
@@ -48,7 +52,7 @@ import com.huanglongmao.onlinefmradio.data.model.ReleaseNote
 private fun PlaceholderScreen(title: String, emoji: String, message: String, onBack: () -> Unit) {
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -102,7 +106,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("更新日志") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -180,7 +184,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
 fun HelpScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = { Text("帮助") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -220,6 +224,42 @@ fun HelpScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 12.dp),
+            )
+        }
+    }
+}
+
+/** 播放历史页：查看最近播放的电台（设置页入口） */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HistoryScreen(onBack: () -> Unit) {
+    val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    val history by container.historyStore.history.collectAsStateWithLifecycle()
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("播放历史") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    if (history.isNotEmpty()) {
+                        TextButton(onClick = { scope.launch { container.historyStore.clear() } }) {
+                            Text("清空")
+                        }
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            com.huanglongmao.onlinefmradio.ui.components.StationListBody(
+                stations = history,
+                emptyText = "暂无播放记录，去听一首电台吧",
             )
         }
     }

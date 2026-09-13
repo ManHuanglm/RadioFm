@@ -42,6 +42,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,6 +56,7 @@ import androidx.navigation.compose.rememberNavController
 import com.huanglongmao.onlinefmradio.App
 import com.huanglongmao.onlinefmradio.core.di.LocalAppContainer
 import com.huanglongmao.onlinefmradio.store.ThemeMode
+import com.huanglongmao.onlinefmradio.ui.components.CollapsedMiniCover
 import com.huanglongmao.onlinefmradio.ui.components.MiniPlayerBar
 import com.huanglongmao.onlinefmradio.ui.screens.AlarmScreen
 import com.huanglongmao.onlinefmradio.ui.screens.CachedStationsScreen
@@ -64,6 +66,7 @@ import com.huanglongmao.onlinefmradio.ui.screens.CountryStationsScreen
 import com.huanglongmao.onlinefmradio.ui.screens.ExploreScreen
 import com.huanglongmao.onlinefmradio.ui.screens.FavoritesScreen
 import com.huanglongmao.onlinefmradio.ui.screens.HelpScreen
+import com.huanglongmao.onlinefmradio.ui.screens.HistoryScreen
 import com.huanglongmao.onlinefmradio.ui.screens.HomeScreen
 import com.huanglongmao.onlinefmradio.ui.screens.LanguageListScreen
 import com.huanglongmao.onlinefmradio.ui.screens.LanguageStationsScreen
@@ -87,13 +90,25 @@ fun AppRoot() {
     val container = (androidx.compose.ui.platform.LocalContext.current.applicationContext as App).container
     val themeMode by container.themeStore.themeMode.collectAsStateWithLifecycle()
     val wallpaperIndex by container.themeStore.wallpaperIndex.collectAsStateWithLifecycle()
+    val fontScale by container.themeStore.fontScale.collectAsStateWithLifecycle()
+
+    // 应用内字体大小（标准/大/特大）：叠加系统字体缩放
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val scaledDensity = androidx.compose.ui.unit.Density(
+        density = density.density,
+        fontScale = density.fontScale * fontScale,
+    )
 
     CompositionLocalProvider(LocalAppContainer provides container) {
         com.huanglongmao.onlinefmradio.core.theme.OnlineFmRadioTheme(
             themeMode = themeMode,
             wallpaperIndex = wallpaperIndex,
         ) {
-            MainScaffold()
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides scaledDensity,
+            ) {
+                MainScaffold()
+            }
         }
     }
 }
@@ -107,6 +122,10 @@ fun MainScaffold() {
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBottomBar = currentRoute in Routes.bottomTabs
+    // 迷你播放条展开/收缩状态（收缩后封面圆悬浮于内容区左下角）
+    var miniExpanded by androidx.compose.runtime.saveable.rememberSaveable {
+        androidx.compose.runtime.mutableStateOf(true)
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -125,78 +144,96 @@ fun MainScaffold() {
                     Column {
                         MiniPlayerBar(
                             onClick = { navController.navigate(Routes.PLAYER) { launchSingleTop = true } },
+                            expanded = miniExpanded,
+                            onCollapse = { miniExpanded = false },
                         )
                         BottomNavBar(navController, currentRoute)
                     }
                 }
             },
         ) { padding ->
-            NavHost(
-                navController = navController,
-                startDestination = Routes.HOME,
-                modifier = Modifier.padding(padding),
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .padding(padding)
+                    .fillMaxWidth(),
             ) {
-                composable(Routes.HOME) {
-                    HomeScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
-                }
-                composable(Routes.EXPLORE) {
-                    ExploreScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
-                }
-                composable(Routes.FAVORITES) {
-                    FavoritesScreen(onOpenDrawer = { scope.launch { drawerState.open() } })
-                }
-                composable(Routes.PROFILE) {
-                    ProfileScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
-                }
-                composable(Routes.PLAYER) { PlayerScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.SETTINGS) {
-                    SettingsScreen(onBack = { navController.popBackStack() }, onNavigate = navController::navigate)
-                }
-                composable(Routes.STATION_UPDATE) { StationUpdateScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.CACHED_STATIONS) { CachedStationsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.LOCAL_STATIONS) { LocalStationsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.RANDOM_STATION) { RandomStationScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.COUNTRY_LIST) {
-                    CountryListScreen(onBack = { navController.popBackStack() }) { name, code ->
-                        navController.navigate(Routes.countryStations(name, code))
+                NavHost(
+                    navController = navController,
+                    startDestination = Routes.HOME,
+                ) {
+                    composable(Routes.HOME) {
+                        HomeScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
                     }
+                    composable(Routes.EXPLORE) {
+                        ExploreScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
+                    }
+                    composable(Routes.FAVORITES) {
+                        FavoritesScreen(onOpenDrawer = { scope.launch { drawerState.open() } })
+                    }
+                    composable(Routes.PROFILE) {
+                        ProfileScreen(onOpenDrawer = { scope.launch { drawerState.open() } }, onNavigate = navController::navigate)
+                    }
+                    composable(Routes.PLAYER) { PlayerScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.SETTINGS) {
+                        SettingsScreen(onBack = { navController.popBackStack() }, onNavigate = navController::navigate)
+                    }
+                    composable(Routes.STATION_UPDATE) { StationUpdateScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.CACHED_STATIONS) { CachedStationsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.LOCAL_STATIONS) { LocalStationsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.RANDOM_STATION) { RandomStationScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.COUNTRY_LIST) {
+                        CountryListScreen(onBack = { navController.popBackStack() }) { name, code ->
+                            navController.navigate(Routes.countryStations(name, code))
+                        }
+                    }
+                    composable(Routes.COUNTRY_STATIONS) { entry ->
+                        CountryStationsScreen(
+                            onBack = { navController.popBackStack() },
+                            name = entry.arguments?.getString("name").orEmpty(),
+                            code = entry.arguments?.getString("code").orEmpty(),
+                        )
+                    }
+                    composable(Routes.LANGUAGE_LIST) {
+                        LanguageListScreen(onBack = { navController.popBackStack() }) { name ->
+                            navController.navigate(Routes.languageStations(name))
+                        }
+                    }
+                    composable(Routes.LANGUAGE_STATIONS) { entry ->
+                        LanguageStationsScreen(
+                            onBack = { navController.popBackStack() },
+                            name = entry.arguments?.getString("name").orEmpty(),
+                        )
+                    }
+                    composable(Routes.TAG_LIST) {
+                        TagListScreen(onBack = { navController.popBackStack() }) { tag ->
+                            navController.navigate(Routes.tagStations(tag))
+                        }
+                    }
+                    composable(Routes.TAG_STATIONS) { entry ->
+                        TagStationsScreen(
+                            onBack = { navController.popBackStack() },
+                            tag = entry.arguments?.getString("tag").orEmpty(),
+                        )
+                    }
+                    composable(Routes.RECORDING) { RecordingScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.ALARM) { AlarmScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.HELP) { HelpScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.DEVELOPER) { DeveloperScreen(onBack = { navController.popBackStack() }, onNavigateLogs = { navController.navigate(Routes.LOGS) { launchSingleTop = true } }) }
+                    composable(Routes.LOGS) { LogsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.HISTORY) { HistoryScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.SEARCH) { SearchScreen(onBack = { navController.popBackStack() }) }
                 }
-                composable(Routes.COUNTRY_STATIONS) { entry ->
-                    CountryStationsScreen(
-                        onBack = { navController.popBackStack() },
-                        name = entry.arguments?.getString("name").orEmpty(),
-                        code = entry.arguments?.getString("code").orEmpty(),
+                // 收缩态封面圆：悬浮于内容区左下角（绘制在导航内容之上）
+                if (showBottomBar && !miniExpanded) {
+                    CollapsedMiniCover(
+                        modifier = Modifier
+                            .align(androidx.compose.ui.Alignment.BottomStart)
+                            .padding(start = 14.dp, bottom = 10.dp),
+                        onExpand = { miniExpanded = true },
+                        onOpenPlayer = { navController.navigate(Routes.PLAYER) { launchSingleTop = true } },
                     )
                 }
-                composable(Routes.LANGUAGE_LIST) {
-                    LanguageListScreen(onBack = { navController.popBackStack() }) { name ->
-                        navController.navigate(Routes.languageStations(name))
-                    }
-                }
-                composable(Routes.LANGUAGE_STATIONS) { entry ->
-                    LanguageStationsScreen(
-                        onBack = { navController.popBackStack() },
-                        name = entry.arguments?.getString("name").orEmpty(),
-                    )
-                }
-                composable(Routes.TAG_LIST) {
-                    TagListScreen(onBack = { navController.popBackStack() }) { tag ->
-                        navController.navigate(Routes.tagStations(tag))
-                    }
-                }
-                composable(Routes.TAG_STATIONS) { entry ->
-                    TagStationsScreen(
-                        onBack = { navController.popBackStack() },
-                        tag = entry.arguments?.getString("tag").orEmpty(),
-                    )
-                }
-                composable(Routes.RECORDING) { RecordingScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.ALARM) { AlarmScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.CHANGELOG) { ChangelogScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.HELP) { HelpScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.DEVELOPER) { DeveloperScreen(onBack = { navController.popBackStack() }, onNavigateLogs = { navController.navigate(Routes.LOGS) { launchSingleTop = true } }) }
-                composable(Routes.LOGS) { LogsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.SEARCH) { SearchScreen(onBack = { navController.popBackStack() }) }
             }
         }
     }

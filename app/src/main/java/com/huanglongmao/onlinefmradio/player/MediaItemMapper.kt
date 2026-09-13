@@ -36,6 +36,9 @@ object MediaItemMapper {
             .setUri(station.streamUrl)
             .setMediaMetadata(metadata)
             .setMimeType(guessMimeType(station))
+            // 显式标记为直播流：时长保持 TIME_UNSET、不可拖动，
+            // 系统媒体通知栏与 UI 均不显示进度条
+            .setLiveConfiguration(MediaItem.LiveConfiguration.Builder().build())
             .build()
     }
 

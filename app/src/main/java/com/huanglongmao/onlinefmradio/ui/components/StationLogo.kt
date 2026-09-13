@@ -48,7 +48,8 @@ fun StationLogo(station: Station, size: Dp = 48.dp, cornerRadius: Dp = 12.dp) {
             AsyncImage(
                 model = url,
                 contentDescription = station.name,
-                contentScale = ContentScale.Crop,
+                // 等比缩放完整显示（不裁剪），居中呈现
+                contentScale = ContentScale.Fit,
                 modifier = Modifier.size(size),
                 onError = {
                     if (url == station.safeLogo && station.faviconFallback.isNotEmpty()) {

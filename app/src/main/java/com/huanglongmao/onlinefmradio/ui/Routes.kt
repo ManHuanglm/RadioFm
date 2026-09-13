@@ -22,6 +22,7 @@ object Routes {
     const val HELP = "help"
     const val DEVELOPER = "developer"
     const val LOGS = "logs"
+    const val HISTORY = "history"
 
     /** 带参路由模板 */
     const val COUNTRY_STATIONS = "country_stations/{name}/{code}"
