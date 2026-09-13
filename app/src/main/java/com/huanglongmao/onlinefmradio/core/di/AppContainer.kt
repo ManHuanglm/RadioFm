@@ -14,6 +14,7 @@ import com.huanglongmao.onlinefmradio.store.FavoritesStore
 import com.huanglongmao.onlinefmradio.store.HistoryStore
 import com.huanglongmao.onlinefmradio.store.ImportExportManager
 import com.huanglongmao.onlinefmradio.store.LocalStationStore
+import com.huanglongmao.onlinefmradio.store.RecordingManager
 import com.huanglongmao.onlinefmradio.store.SettingsDataStore
 import com.huanglongmao.onlinefmradio.store.StationUpdateManager
 import com.huanglongmao.onlinefmradio.store.ThemeStore
@@ -84,4 +85,8 @@ class AppContainer(context: Context) {
     val appUpdateManager: AppUpdateManager by lazy {
         AppUpdateManager(updateApi, settings)
     }
+
+    // ===== 录音 =====
+
+    val recordingManager: RecordingManager by lazy { RecordingManager(appContext) }
 }
