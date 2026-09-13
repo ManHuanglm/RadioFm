@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// 固定签名：本地与 CI 共用同一 keystore，保证 APK 可互相覆盖安装。
+// CI 通过环境变量注入（release.yml 从 Secrets 解码），本地默认使用 keystore/ 目录下的文件。
+val sharedStoreFile = System.getenv("SIGNING_STORE_FILE")?.let { rootProject.file(it) }
+    ?: rootProject.file("keystore/radiofm-release.keystore")
+val sharedStorePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: "RadioFm2026"
+val sharedKeyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "radiofm"
+val sharedKeyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: sharedStorePassword
+
 android {
     namespace = "com.huanglongmao.onlinefmradio"
     compileSdk = 36
@@ -17,6 +25,17 @@ android {
         versionName = "1.0.3"
     }
 
+    signingConfigs {
+        if (sharedStoreFile.exists()) {
+            create("shared") {
+                storeFile = sharedStoreFile
+                storePassword = sharedStorePassword
+                keyAlias = sharedKeyAlias
+                keyPassword = sharedKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -25,8 +44,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // CI 无正式签名，用 debug 签名保证 release 包可直接安装
-            signingConfig = signingConfigs.getByName("debug")
+            // 优先固定签名；keystore 缺失时退回 debug 签名保证能构建
+            signingConfig = signingConfigs.findByName("shared")
+                ?: signingConfigs.getByName("debug")
+        }
+        debug {
+            signingConfigs.findByName("shared")?.let { signingConfig = it }
         }
     }
 

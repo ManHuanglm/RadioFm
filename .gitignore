@@ -7,3 +7,5 @@ build/
 /captures
 .externalNativeBuild
 .cxx
+# 签名密钥不入库，CI 通过 GitHub Secrets 注入
+keystore/
