@@ -373,4 +373,16 @@ class StationRepository(
         cachedStats = null
         cache.clearCache()
     }
+
+    /**
+     * 拉取 radio-browser.info 标记的故障电台并从本地缓存中移除。
+     * @return 被移除的故障电台数量
+     */
+    suspend fun removeBrokenStations(): Int = try {
+        val broken = api.brokenStations(limit = 10000)
+        val brokenIds = broken.mapNotNull { it.stationUuid }.filter { it.isNotEmpty() }.toSet()
+        if (brokenIds.isEmpty()) 0 else cache.removeStationsByIds(brokenIds)
+    } catch (_: Exception) {
+        0
+    }
 }

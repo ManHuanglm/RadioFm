@@ -14,6 +14,7 @@ import com.huanglongmao.onlinefmradio.store.FavoritesStore
 import com.huanglongmao.onlinefmradio.store.HistoryStore
 import com.huanglongmao.onlinefmradio.store.ImportExportManager
 import com.huanglongmao.onlinefmradio.store.LocalStationStore
+import com.huanglongmao.onlinefmradio.store.PlayFailureStore
 import com.huanglongmao.onlinefmradio.store.RecordingManager
 import com.huanglongmao.onlinefmradio.store.SettingsDataStore
 import com.huanglongmao.onlinefmradio.store.StationUpdateManager
@@ -54,6 +55,8 @@ class AppContainer(context: Context) {
 
     val historyStore: HistoryStore by lazy { HistoryStore(settings) }
 
+    val playFailureStore: PlayFailureStore by lazy { PlayFailureStore(settings) }
+
     val themeStore: ThemeStore by lazy { ThemeStore(settings) }
 
     val visualizerStore: VisualizerStore by lazy { VisualizerStore(settings) }
@@ -65,7 +68,7 @@ class AppContainer(context: Context) {
     // ===== 播放 =====
 
     val playerController: PlayerController by lazy {
-        PlayerController(appContext, historyStore, settings)
+        PlayerController(appContext, historyStore, settings, playFailureStore)
     }
 
     val sleepTimerManager: SleepTimerManager by lazy {

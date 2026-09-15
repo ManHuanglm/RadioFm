@@ -74,12 +74,20 @@ object AppConstants {
     const val KEY_APP_UPDATE_CACHED_RELEASES = "app_update_cached_releases"
     const val KEY_APP_UPDATE_SKIPPED_VERSION = "app_update_skipped_version"
 
+    // 电台播放失败计数（JSON map: stationId -> count），达到阈值后自动切到下一电台
+    const val KEY_PLAY_FAILURE_COUNTS = "play_failure_counts"
+
     // ===== 业务常量 =====
 
     const val MAX_HISTORY_LENGTH = 10
     const val MAX_FAVORITE_STATIONS = 50
     const val DEFAULT_SLEEP_TIMER_MINUTES = 30
     const val DEFAULT_VOLUME = 0.5f
+
+    /** 电台播放失败次数阈值：同一电台累计失败达到该值时判定为故障电台，自动切到下一电台 */
+    const val MAX_PLAY_FAILURES = 2
+    /** 多次失败后展示友好提示再自动切台的等待时长（毫秒） */
+    const val AUTO_SKIP_DELAY_MS = 1500L
 
     /** radio-browser.info API 基础地址 */
     const val RADIO_BROWSER_API_BASE = "https://de1.api.radio-browser.info/json"

@@ -53,6 +53,12 @@ class StationUpdateManager(
     private val _remoteStats = MutableStateFlow<RadioStats?>(null)
     val remoteStats: StateFlow<RadioStats?> = _remoteStats
 
+    private val _isCleaningBroken = MutableStateFlow(false)
+    val isCleaningBroken: StateFlow<Boolean> = _isCleaningBroken
+
+    private val _brokenRemovedCount = MutableStateFlow(0)
+    val brokenRemovedCount: StateFlow<Int> = _brokenRemovedCount
+
     @Volatile private var cancelled = false
 
     /** 进度（0.0 ~ 1.0） */
@@ -171,9 +177,15 @@ class StationUpdateManager(
             } else {
                 AppLogger.i(TAG, "全量更新完成：共 $count 条")
                 _fetchedCount.value = count
-                _updateComplete.value = true
                 _hasResumeData.value = false
                 clearResumeData()
+                // 更新完成后自动清理故障电台，再统计最终缓存数量
+                val removed = cleanBrokenStationsInternal()
+                _brokenRemovedCount.value = removed
+                if (removed > 0) {
+                    AppLogger.i(TAG, "更新后自动清理故障电台：$removed 条")
+                }
+                _updateComplete.value = true
                 _cachedCount.value = repository.getCachedStationCount()
             }
         } catch (e: Exception) {
@@ -255,6 +267,9 @@ class StationUpdateManager(
                 shouldStop = { cancelled },
             )
             _fetchedCount.value = newCount
+            // 同步完成后同样自动清理故障电台
+            val removed = cleanBrokenStationsInternal()
+            _brokenRemovedCount.value = removed
             _updateComplete.value = true
             _cachedCount.value = repository.getCachedStationCount()
             newCount
@@ -270,6 +285,37 @@ class StationUpdateManager(
     fun stop() {
         cancelled = true
         _isPaused.value = false
+    }
+
+    /**
+     * 清理本地缓存中的故障电台：拉取 radio-browser.info 的故障电台列表，
+     * 从缓存中移除对应 ID，返回移除数量。
+     */
+    fun startCleanBroken() {
+        scope.launch {
+            if (_isCleaningBroken.value) return@launch
+            _isCleaningBroken.value = true
+            _errorMessage.value = null
+            try {
+                val removed = cleanBrokenStationsInternal()
+                _brokenRemovedCount.value = removed
+                _cachedCount.value = repository.getCachedStationCount()
+                AppLogger.i(TAG, "故障电台清理完成：移除 $removed 条")
+            } finally {
+                _isCleaningBroken.value = false
+            }
+        }
+    }
+
+    /**
+     * 清理故障电台的内部实现（更新流程与手动清理共用）。
+     * 失败不抛异常（返回 0），避免影响更新主流程。
+     */
+    private suspend fun cleanBrokenStationsInternal(): Int = runCatching {
+        repository.removeBrokenStations()
+    }.getOrElse { e ->
+        AppLogger.e(TAG, "故障电台清理失败：${e.message}")
+        0
     }
 
     private companion object {

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,6 +66,8 @@ fun StationUpdateScreen(onBack: () -> Unit) {
     val errorMsg by manager.errorMessage.collectAsStateWithLifecycle()
     val cachedCount by manager.cachedCount.collectAsStateWithLifecycle()
     val remoteStats by manager.remoteStats.collectAsStateWithLifecycle()
+    val isCleaningBroken by manager.isCleaningBroken.collectAsStateWithLifecycle()
+    val brokenRemoved by manager.brokenRemovedCount.collectAsStateWithLifecycle()
 
     var confirmRestart by remember { mutableStateOf(false) }
     var started by remember { mutableStateOf(false) }
@@ -126,7 +131,11 @@ fun StationUpdateScreen(onBack: () -> Unit) {
                 Text("更新期间请保持网络畅通，可随时暂停。", style = MaterialTheme.typography.bodySmall)
             } else if (complete && errorMsg == null) {
                 Text(
-                    text = "更新完成，本地已缓存 $cachedCount 条电台数据。",
+                    text = if (brokenRemoved > 0) {
+                        "更新完成，本地已缓存 $cachedCount 条电台数据（已自动清理 $brokenRemoved 个故障电台）。"
+                    } else {
+                        "更新完成，本地已缓存 $cachedCount 条电台数据。"
+                    },
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -180,6 +189,40 @@ fun StationUpdateScreen(onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            HorizontalDivider()
+
+            // 故障电台清理
+            Text(
+                "故障电台清理",
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                "从 radio-browser.info 拉取已标记故障的电台，并从本地缓存中移除。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (isCleaningBroken) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("正在排查故障电台…")
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { manager.startCleanBroken() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = cachedCount > 0,
+                ) { Text("清理故障电台") }
+                if (brokenRemoved > 0) {
+                    Text(
+                        "已清理 $brokenRemoved 个故障电台",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
     }

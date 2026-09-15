@@ -128,6 +128,30 @@ class StationFileCache(context: Context) {
         }
     }
 
+    /** 按 ID 集合移除缓存中的电台（用于清理故障电台），返回实际移除数量 */
+    suspend fun removeStationsByIds(ids: Set<String>): Int {
+        if (ids.isEmpty()) return 0
+        ensureLoaded()
+        var removed = 0
+        synchronized(byId) {
+            for (id in ids) {
+                if (byId.remove(id) != null) removed++
+            }
+        }
+        if (removed == 0) return 0
+        withContext(Dispatchers.IO) {
+            try {
+                val remaining = synchronized(byId) { byId.values.toList() }
+                file.writeText(remaining.joinToString("") { s ->
+                    json.encodeToString(Station.serializer(), s) + "\n"
+                })
+            } catch (_: Exception) {
+                // 写盘失败不影响内存态，下次启动重新校准
+            }
+        }
+        return removed
+    }
+
     /** 清空缓存 */
     suspend fun clearCache() {
         ensureLoaded()

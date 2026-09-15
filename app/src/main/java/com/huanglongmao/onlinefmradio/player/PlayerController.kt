@@ -10,11 +10,13 @@ import com.huanglongmao.onlinefmradio.core.constants.AppConstants
 import com.huanglongmao.onlinefmradio.core.util.AppLogger
 import com.huanglongmao.onlinefmradio.data.model.Station
 import com.huanglongmao.onlinefmradio.store.HistoryStore
+import com.huanglongmao.onlinefmradio.store.PlayFailureStore
 import com.huanglongmao.onlinefmradio.store.SettingsDataStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -31,11 +33,15 @@ class PlayerController(
     private val context: Context,
     private val historyStore: HistoryStore,
     private val settings: SettingsDataStore,
+    private val playFailureStore: PlayFailureStore,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val buildMutex = Mutex()
     private var controller: MediaController? = null
+
+    /** 自动切台任务：用户手动播放/重试时需取消，避免覆盖用户操作 */
+    private var autoSkipJob: kotlinx.coroutines.Job? = null
 
     // ===== UI 状态（对齐原 PlayerService 的状态字段）=====
 
@@ -62,13 +68,28 @@ class PlayerController(
         scope.launch {
             _volume.value = settings.getFloat(AppConstants.KEY_VOLUME) ?: AppConstants.DEFAULT_VOLUME
         }
-        // 重连耗尽后的友好错误 → UI 提示与手动重试
+        // 重连耗尽后的友好错误 → UI 提示与手动重试；
+        // 同一电台累计失败达到阈值时，友好提示后自动切到历史中的下一电台
         scope.launch {
             PlayerEventBus.errors.collect { message ->
                 AppLogger.e(TAG, "播放错误：$message")
-                _errorMessage.value = message
+                val failedStation = _currentStation.value
                 _isBuffering.value = false
                 _isPlaying.value = false
+                if (failedStation != null) {
+                    val count = playFailureStore.incrementFailure(failedStation.id)
+                    if (count >= AppConstants.MAX_PLAY_FAILURES) {
+                        _errorMessage.value =
+                            "电台《${failedStation.name}》多次连接失败，正在为你切换到下一电台…"
+                        autoSkipJob?.cancel()
+                        autoSkipJob = scope.launch {
+                            delay(AppConstants.AUTO_SKIP_DELAY_MS)
+                            skipToNext()
+                        }
+                        return@collect
+                    }
+                }
+                _errorMessage.value = message
             }
         }
         // 预热 MediaController
@@ -107,6 +128,12 @@ class PlayerController(
         c.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
+                // 播放成功：清零该电台的失败计数，避免临时网络故障被误判为故障电台
+                if (isPlaying) {
+                    _currentStation.value?.id?.let { id ->
+                        scope.launch { playFailureStore.resetFailure(id) }
+                    }
+                }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -129,6 +156,8 @@ class PlayerController(
 
     /** 播放指定电台 */
     fun play(station: Station) {
+        autoSkipJob?.cancel()
+        autoSkipJob = null
         scope.launch {
             AppLogger.i(TAG, "开始播放：${station.name}")
             _errorMessage.value = null
@@ -150,6 +179,8 @@ class PlayerController(
     /** 使用播放队列播放，支持线控 / 蓝牙切台 */
     fun playFromQueue(stations: List<Station>, startIndex: Int) {
         if (startIndex < 0 || startIndex >= stations.size) return
+        autoSkipJob?.cancel()
+        autoSkipJob = null
         scope.launch {
             val station = stations[startIndex]
             _errorMessage.value = null

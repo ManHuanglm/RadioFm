@@ -89,6 +89,15 @@ interface RadioBrowserApi {
         @Query("hidebroken") hidebroken: String = "true",
     ): List<StationDto>
 
+    /** 故障电台列表（radio-browser.info 标记为无法播放的电台，按 votes 倒序） */
+    @GET("stations/broken")
+    suspend fun brokenStations(
+        @Query("limit") limit: Int = 10000,
+        @Query("offset") offset: Int = 0,
+        @Query("order") order: String = "votes",
+        @Query("reverse") reverse: String = "true",
+    ): List<StationDto>
+
     /** 平台统计 */
     @GET("stats")
     suspend fun stats(): RadioStatsDto
